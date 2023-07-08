@@ -5,7 +5,7 @@
   "scripts": {
     "lint:grpd": "nx run graphql-rp-directive:lint",
     "test:grpd": "nx run graphql-rp-directive:test",
-    "publish:grpd": "npm run lint:grpd && npm run test:grpd && tsx tools/scripts/publish.ts graphql-rp-directive ${VERSION}"
+    "publish:grpd": "npm run lint:grpd && npm run test:grpd && tsx tools/scripts/publish.ts graphql-rp-directive ${VERSION} ${TAG}"
   },
   "private": false,
   "dependencies": {
