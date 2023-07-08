@@ -8,5 +8,9 @@
   },
   "author": {
     "name": "Baijanath Tharu"
+  },
+  "dependencies": {
+    "@graphql-tools/schema": "^10.0.0",
+    "graphql": "^16.7.1"
   }
 }
