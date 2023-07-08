@@ -4,10 +4,15 @@ import { TRolePermission } from './types';
 
 const rolePermissionsData: TRolePermission = {
   ADMIN: {
-    permissions: ['READ_SECURE_DATA', 'READ_RESTRICTED_FIELD'],
+    permissions: [
+      'READ_SECURE_DATA',
+      'READ_RESTRICTED_FIELD',
+      'READ_MUTATION_RESPONSE',
+      'CREATE_FIELD',
+    ],
   },
   PUBLIC: {
-    permissions: [],
+    permissions: ['READ_MUTATION_RESPONSE'],
   },
 };
 
@@ -33,6 +38,14 @@ type SecureField @hasPermission(permissions: ["READ_SECURE_DATA"]) {
   email: String!
 }
 
+type Mutation {
+  createFields(id: Int!): MutationResponse! @hasPermission(permissions: ["CREATE_FIELD"])
+}
+
+type MutationResponse @hasPermission(permissions: ["READ_MUTATION_RESPONSE"]) {
+  done: Boolean!
+}
+
 `;
 
 const resolvers = {
@@ -40,6 +53,9 @@ const resolvers = {
     publicFields: () => ({ name: 'public field' }),
     restrictedFields: () => ({ name: 'restricted field' }),
     secureFields: () => ({ name: 'secure field', email: 'test@test.com' }),
+  },
+  Mutation: {
+    createFields: () => ({ done: true }),
   },
 };
 
