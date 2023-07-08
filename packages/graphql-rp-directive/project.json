@@ -15,7 +15,7 @@
       }
     },
     "publish": {
-      "command": "node tools/scripts/publish.mjs graphql-rp-directive {args.ver} {args.tag}",
+      "command": "tsx tools/scripts/publish.ts graphql-rp-directive {args.ver} {args.tag}",
       "dependsOn": ["build"]
     },
     "lint": {

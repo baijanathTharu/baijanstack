@@ -7,10 +7,11 @@
  * You might need to authenticate with NPM before running this script.
  */
 
-import { execSync } from 'child_process';
-import { readFileSync, writeFileSync } from 'fs';
+import { exec, execSync } from 'child_process';
+import { readFileSync, writeFileSync, writeSync } from 'fs';
 
 import devkit from '@nx/devkit';
+import { stderr, stdout } from 'process';
 const { readCachedProjectGraph } = devkit;
 
 function invariant(condition, message) {
@@ -57,4 +58,10 @@ try {
 }
 
 // Execute "npm publish" to publish
-execSync(`npm publish --access public --tag ${tag}`);
+exec(`npm publish --access public --tag ${tag}`, (e, stdout, stderr) => {
+  console.log(stdout);
+  console.error(stderr);
+  if (e) {
+    console.error('Failed to publish', e);
+  }
+});
