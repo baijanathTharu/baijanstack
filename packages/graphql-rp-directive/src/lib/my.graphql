@@ -1,0 +1,21 @@
+directive @hasPermission(permissions: [String!]) on FIELD_DEFINITION | OBJECT
+
+type Query {
+  publicFields: PublicField
+  restrictedFields: RestrictedField
+    @hasPermission(permissions: ["READ_RESTRICTED_FIELD"])
+  secureFields: SecureField @hasPermission(permissions: ["READ_SECURE_DATA"])
+}
+
+type PublicField {
+  name: String!
+}
+
+type RestrictedField {
+  name: String!
+}
+
+type SecureField {
+  name: String!
+  email: String!
+}

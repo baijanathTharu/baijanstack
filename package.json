@@ -9,6 +9,10 @@
   },
   "private": false,
   "dependencies": {
+    "@graphql-tools/schema": "^10.0.0",
+    "apollo-server-express": "^3.12.0",
+    "apollo-server-integration-testing": "^3.0.0",
+    "graphql": "^16.7.1",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
