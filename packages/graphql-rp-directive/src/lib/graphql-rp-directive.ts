@@ -1,5 +1,15 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { getAuthorizedSchema } from './directives';
+import { TRolePermission } from './types';
+
+const rolePermissionsData: TRolePermission = {
+  ADMIN: {
+    permissions: ['READ_SECURE_DATA', 'READ_RESTRICTED_FIELD'],
+  },
+  PUBLIC: {
+    permissions: [],
+  },
+};
 
 const typeDefs = `
 directive @hasPermission(permissions: [String!]) on FIELD_DEFINITION | OBJECT
@@ -38,4 +48,6 @@ const schema = makeExecutableSchema({
   resolvers,
 });
 
-export const schemaWithPermissionDirective = getAuthorizedSchema(schema);
+export const schemaWithPermissionDirective = getAuthorizedSchema(schema, {
+  rolePermissionsData,
+});

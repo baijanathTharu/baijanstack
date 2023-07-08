@@ -1,19 +1,6 @@
 import { mapSchema, getDirective, MapperKind } from '@graphql-tools/utils';
 import { GraphQLSchema, defaultFieldResolver } from 'graphql';
-
-const ROLE_PERMISSIONS: Record<
-  string,
-  {
-    permissions: Array<string>;
-  }
-> = {
-  ADMIN: {
-    permissions: ['READ_SECURE_DATA', 'READ_RESTRICTED_FIELD'],
-  },
-  PUBLIC: {
-    permissions: [],
-  },
-};
+import { TIsAuthorizedArgs, TRolePermission } from './types';
 
 function denyRequest({
   fieldPermissions,
@@ -34,13 +21,12 @@ function denyRequest({
   return hasNoPermissions;
 }
 
-function isAuthorized(
-  fieldPermissions: Array<string>,
-  typePermissions: Array<string>,
-  user: {
-    roles: Array<string>;
-  }
-) {
+function isAuthorized({
+  fieldPermissions,
+  typePermissions,
+  user,
+  ROLE_PERMISSIONS,
+}: TIsAuthorizedArgs) {
   const userRoles = user?.roles ?? [];
   const userPermissions = new Set();
   userRoles.forEach((roleKey) => {
@@ -81,7 +67,10 @@ function gatherTypePermissions(schema: GraphQLSchema) {
   return typePermissionMapping;
 }
 
-export function getAuthorizedSchema(schema: GraphQLSchema) {
+export function getAuthorizedSchema(
+  schema: GraphQLSchema,
+  { rolePermissionsData }: { rolePermissionsData: TRolePermission }
+) {
   const typePermissionMapping = gatherTypePermissions(schema);
 
   const authorizedSchema = mapSchema(schema, {
@@ -107,7 +96,14 @@ export function getAuthorizedSchema(schema: GraphQLSchema) {
         const originalResolver = fieldConfig.resolve ?? defaultFieldResolver;
         fieldConfig.resolve = (source, args, context, info) => {
           const user = context.user;
-          if (!isAuthorized(fieldPermissions, typePermissions, user)) {
+          if (
+            !isAuthorized({
+              fieldPermissions,
+              typePermissions,
+              user,
+              ROLE_PERMISSIONS: rolePermissionsData,
+            })
+          ) {
             throw new Error('Unauthorized');
           }
           return originalResolver(source, args, context, info);
