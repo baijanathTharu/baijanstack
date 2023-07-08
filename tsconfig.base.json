@@ -14,7 +14,11 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@baijanstack/graphql-rp-directive": [
+        "packages/graphql-rp-directive/src/index.ts"
+      ]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }
