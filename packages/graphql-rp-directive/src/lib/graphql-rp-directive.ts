@@ -5,7 +5,7 @@ const typeDefs = `
 directive @hasPermission(permissions: [String!]) on FIELD_DEFINITION | OBJECT
 
 type Query {
-  publicFields: PublicField @hasPermission(permissions: ["READ_PUBLIC"])
+  publicFields: PublicField
   restrictedFields: RestrictedField @hasPermission(permissions: ["READ_RESTRICTED_FIELD"])
   secureFields: SecureField @hasPermission(permissions: ["READ_SECURE_DATA"])
 }
@@ -18,7 +18,7 @@ type RestrictedField {
   name: String!
 }
 
-type SecureField {
+type SecureField @hasPermission(permissions: ["READ_SECURE_DATA"]) {
   name: String!
   email: String!
 }

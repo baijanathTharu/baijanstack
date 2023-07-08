@@ -91,7 +91,9 @@ describe('hasPermissionDirective', () => {
       query: publicFieldsQuery,
     });
     expect(res.errors).toBeDefined();
-    expect(res.errors?.[0].message).toBe('Unauthorized');
+    expect(res.errors?.[0].message).toBe(
+      'Denied Request for Query.publicFields'
+    );
     // expect(res?.data?.['secureFields']).toBeNull();
   });
 });
