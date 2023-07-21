@@ -1,0 +1,20 @@
+{
+  "name": "@baijanstack/prisma-filter-generator",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": {
+    "name": "Baijanath Tharu"
+  },
+  "homepage": "https://github.com/baijanathTharu/baijanstack/blob/main/packages/prisma-filter-generator/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/baijanathTharu/baijanstack/blob/main/packages/prisma-filter-generator"
+  },
+  "bugs": {
+    "url": "https://github.com/baijanathTharu/baijanstack/issues"
+  }
+}

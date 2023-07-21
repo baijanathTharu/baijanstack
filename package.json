@@ -5,7 +5,11 @@
   "scripts": {
     "lint:grpd": "nx run graphql-rp-directive:lint",
     "test:grpd": "nx run graphql-rp-directive:test",
-    "publish:grpd": "npm run lint:grpd && npm run test:grpd && tsx tools/scripts/publish.ts graphql-rp-directive ${VERSION} ${TAG}"
+    "publish:grpd": "npm run lint:grpd && npm run test:grpd && tsx tools/scripts/publish.ts graphql-rp-directive ${VERSION} ${TAG}",
+    "lint:pfg": "nx run prisma-filter-generator:lint",
+    "test:pfg": "nx run prisma-filter-generator:test",
+    "build:pfg": "nx run prisma-filter-generator:build",
+    "publish:pfg": "npm run lint:pfg && npm run test:pfg && npm run build:pfg && tsx tools/scripts/publish.ts prisma-filter-generator ${VERSION} ${TAG}"
   },
   "private": false,
   "dependencies": {

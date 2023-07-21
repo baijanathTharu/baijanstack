@@ -17,6 +17,9 @@
     "paths": {
       "@baijanstack/graphql-rp-directive": [
         "packages/graphql-rp-directive/src/index.ts"
+      ],
+      "@baijanstack/prisma-filter-generator": [
+        "packages/prisma-filter-generator/src/index.ts"
       ]
     }
   },

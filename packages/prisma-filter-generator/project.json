@@ -1,0 +1,44 @@
+{
+  "name": "prisma-filter-generator",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/prisma-filter-generator/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/prisma-filter-generator",
+        "main": "packages/prisma-filter-generator/src/index.ts",
+        "tsConfig": "packages/prisma-filter-generator/tsconfig.lib.json",
+        "assets": ["packages/prisma-filter-generator/*.md"]
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs prisma-filter-generator {args.ver} {args.tag}",
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/prisma-filter-generator/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/prisma-filter-generator/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    }
+  },
+  "tags": []
+}
