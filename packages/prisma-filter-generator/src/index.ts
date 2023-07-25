@@ -1,3 +1,1 @@
-export function sayHello() {
-  return 'hello';
-}
+export * from './lib/build-filter';
