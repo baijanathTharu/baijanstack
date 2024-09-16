@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 
-import { writeTestLogToFile } from '../util';
+import { writeTestLogToFile } from '../test-util';
 
 import { ISignUpPersistor, RouteGenerator } from './express-auth';
 
