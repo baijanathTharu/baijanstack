@@ -1,0 +1,46 @@
+{
+  "name": "express-auth",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/express-auth/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/express-auth",
+        "main": "packages/express-auth/src/index.ts",
+        "tsConfig": "packages/express-auth/tsconfig.lib.json",
+        "assets": ["packages/express-auth/*.md"]
+      }
+    },
+    "publish": {
+      "command": "tsx tools/scripts/publish.ts express-auth {args.ver} {args.tag}",
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/express-auth/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/express-auth/jest.config.ts",
+        "passWithNoTests": true,
+        "verbose": true,
+        "silent": false
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    }
+  },
+  "tags": []
+}

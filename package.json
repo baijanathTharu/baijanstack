@@ -9,13 +9,17 @@
     "lint:pfg": "nx run prisma-filter-generator:lint",
     "test:pfg": "nx run prisma-filter-generator:test",
     "build:pfg": "nx run prisma-filter-generator:build",
-    "publish:pfg": "npm run lint:pfg && npm run test:pfg && npm run build:pfg && tsx tools/scripts/publish.ts prisma-filter-generator ${VERSION} ${TAG}"
+    "publish:pfg": "npm run lint:pfg && npm run test:pfg && npm run build:pfg && tsx tools/scripts/publish.ts prisma-filter-generator ${VERSION} ${TAG}",
+    "test:ea": "nx run express-auth:test",
+    "build:ea": "nx run express-auth:build",
+    "publish:ea": "npm run lint:ea && npm run test:ea && npm run build:ea && tsx tools/scripts/publish.ts express-auth ${VERSION} ${TAG}"
   },
   "private": false,
   "dependencies": {
     "@graphql-tools/schema": "^10.0.0",
     "apollo-server-express": "^3.12.0",
     "apollo-server-integration-testing": "^3.0.0",
+    "express": "^4.21.0",
     "graphql": "^16.7.1",
     "tslib": "^2.3.0"
   },
@@ -25,8 +29,10 @@
     "@nx/js": "16.5.0",
     "@nx/linter": "16.5.0",
     "@nx/workspace": "16.5.0",
+    "@types/express": "^4.17.21",
     "@types/jest": "^29.4.0",
     "@types/node": "18.7.1",
+    "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^5.60.1",
     "@typescript-eslint/parser": "^5.60.1",
     "eslint": "~8.15.0",
@@ -35,6 +41,7 @@
     "jest-environment-node": "^29.4.1",
     "nx": "16.5.0",
     "prettier": "^2.6.2",
+    "supertest": "^7.0.0",
     "ts-jest": "^29.1.0",
     "ts-node": "10.9.1",
     "tsx": "^3.12.7",

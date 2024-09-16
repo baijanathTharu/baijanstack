@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@baijanstack/express-auth": ["packages/express-auth/src/index.ts"],
       "@baijanstack/graphql-rp-directive": [
         "packages/graphql-rp-directive/src/index.ts"
       ],
