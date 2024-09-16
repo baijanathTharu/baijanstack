@@ -9,7 +9,10 @@
     "lint:pfg": "nx run prisma-filter-generator:lint",
     "test:pfg": "nx run prisma-filter-generator:test",
     "build:pfg": "nx run prisma-filter-generator:build",
-    "publish:pfg": "npm run lint:pfg && npm run test:pfg && npm run build:pfg && tsx tools/scripts/publish.ts prisma-filter-generator ${VERSION} ${TAG}"
+    "publish:pfg": "npm run lint:pfg && npm run test:pfg && npm run build:pfg && tsx tools/scripts/publish.ts prisma-filter-generator ${VERSION} ${TAG}",
+    "test:ea": "nx run express-auth:test",
+    "build:ea": "nx run express-auth:build",
+    "publish:ea": "npm run lint:ea && npm run test:ea && npm run build:ea && tsx tools/scripts/publish.ts express-auth ${VERSION} ${TAG}"
   },
   "private": false,
   "dependencies": {
