@@ -1,15 +1,19 @@
-import { writeFile } from 'fs';
+import { appendFile } from 'fs';
 import { join } from 'path';
 
 export async function writeTestLogToFile(text: string) {
   return new Promise((resolve, reject) => {
-    writeFile(join(process.cwd(), 'dist/test.log'), text, (err) => {
-      if (err) {
-        reject(err);
-        return;
-      }
+    appendFile(
+      join(process.cwd(), 'dist/test.log'),
+      `\ntime: ${new Date()} | text: ${text}`,
+      (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
 
-      resolve(text);
-    });
+        resolve(text);
+      }
+    );
   });
 }

@@ -16,6 +16,8 @@ This library is independent of data persistence i.e. it is the job of the user t
 
 Following environment variables must be set:
 
+The type of the config is TConfig defined in `@baijanstack/express-auth`
+
 ```bash
 export SALT_ROUNDS=10
 export TOKEN_SECRET=secret

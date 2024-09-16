@@ -1,6 +1,15 @@
 import { Application as ExpressApplication } from 'express';
 import { generateTokens, setCookies } from '../utils';
 
+export type TConfig = {
+  SALT_ROUNDS: string;
+  TOKEN_SECRET: string;
+  ACCESS_TOKEN_AGE: string;
+  REFRESH_TOKEN_AGE: string;
+  ACCESS_TOKEN_COOKIE_MAX_AGE: number; // in milliseconds
+  REFRESH_TOKEN_COOKIE_MAX_AGE: number; // in milliseconds
+};
+
 export interface ISignUpPersistor {
   errors: {
     USER_ALREADY_EXISTS_MESSAGE?: string;
@@ -16,7 +25,7 @@ export interface ILoginPersistor {
   login: () => Promise<void>;
   doesUserExists: (body: any) => Promise<boolean>;
   doesPasswordMatch: (body: any) => Promise<boolean>;
-  getTokenInput: (body: any) => Promise<string[]>;
+  tokenKeysFromBody: (body: any) => Promise<string[]>;
 }
 
 interface IRouteGenerator {
@@ -28,8 +37,10 @@ interface IRouteGenerator {
 const BASE_PATH = '/v1/auth';
 
 export class RouteGenerator implements IRouteGenerator {
-  constructor(private app: ExpressApplication) {
-    //
+  private config: TConfig;
+
+  constructor(private app: ExpressApplication, config: TConfig) {
+    this.config = config;
   }
 
   createSignUpRoute(signUpPersistor: ISignUpPersistor) {
@@ -69,15 +80,21 @@ export class RouteGenerator implements IRouteGenerator {
         return;
       }
 
-      const keys = await logingPersistor.getTokenInput(req.body);
+      const keys = await logingPersistor.tokenKeysFromBody(req.body);
       const tokenInput: Record<string, string> = {};
-      for (const key of req.body) {
+      for (const key in req.body) {
         if (keys.includes(key)) {
           tokenInput[key] = req.body[key];
         }
       }
 
-      const tokens = generateTokens(JSON.stringify(tokenInput));
+      const tokens = generateTokens(tokenInput, {
+        tokenSecret: this.config.TOKEN_SECRET,
+        ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
+        REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
+      });
+
+      await logingPersistor.login();
 
       setCookies({
         res,
@@ -85,20 +102,18 @@ export class RouteGenerator implements IRouteGenerator {
           {
             cookieName: 'x-access-token',
             cookieValue: tokens.accessToken,
-            maxAge: Number(process.env['ACCESS_TOKEN_AGE']),
+            maxAge: this.config.ACCESS_TOKEN_COOKIE_MAX_AGE,
           },
           {
             cookieName: 'x-refresh-token',
             cookieValue: tokens.refreshToken,
-            maxAge: Number(process.env['REFRESH_TOKEN_AGE']),
+            maxAge: this.config.REFRESH_TOKEN_COOKIE_MAX_AGE,
           },
         ],
       });
 
-      await logingPersistor.login();
-
       res.status(200).json({
-        message: 'Logged in successfully',
+        message: 'Logged in successfully!!',
       });
     });
   }

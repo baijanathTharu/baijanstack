@@ -2,11 +2,9 @@ import { Response } from 'express';
 import { compare, genSalt, hash } from 'bcryptjs';
 import { sign, verify } from 'jsonwebtoken';
 
-const saltRounds = Number(process.env['SALT_ROUNDS']) || 8;
-const tokenSecret = process.env['TOKEN_SECRET'] || 'secret';
-
 export function hashPassword(
-  password: string
+  password: string,
+  saltRounds: number
 ): Promise<[Error | null, string | null]> {
   return new Promise((resolve, reject) => {
     genSalt(saltRounds, (err, salt) => {
@@ -40,15 +38,26 @@ export function comparePassword({
   });
 }
 
-export function generateTokens(payload: any): {
+export function generateTokens(
+  payload: any,
+  {
+    ACCESS_TOKEN_AGE,
+    REFRESH_TOKEN_AGE,
+    tokenSecret,
+  }: {
+    ACCESS_TOKEN_AGE: string;
+    REFRESH_TOKEN_AGE: string;
+    tokenSecret: string;
+  }
+): {
   accessToken: string;
   refreshToken: string;
 } {
   const accessToken = sign(payload, tokenSecret, {
-    expiresIn: process.env['ACCESS_TOKEN_AGE'] || '15m',
+    expiresIn: ACCESS_TOKEN_AGE || '15m',
   });
   const refreshToken = sign(payload, tokenSecret, {
-    expiresIn: process.env['REFRESH_TOKEN_AGE'] || '7d',
+    expiresIn: REFRESH_TOKEN_AGE || '7d',
   });
   return {
     accessToken,
@@ -57,7 +66,13 @@ export function generateTokens(payload: any): {
 }
 
 // verify token
-export async function verifyToken({ token }: { token: string }) {
+export async function verifyToken({
+  token,
+  tokenSecret,
+}: {
+  token: string;
+  tokenSecret: string;
+}) {
   try {
     const decodedAccessToken = verify(token, tokenSecret) as {
       userId: number;
@@ -83,12 +98,13 @@ export function setCookies({
     maxAge: number;
   }>;
 }) {
-  res.writeHead(200, {
-    'Set-Cookie': cookieData.map(
-      ({ cookieName, cookieValue, maxAge }) =>
-        `${cookieName}: ${cookieValue}; Max-Age=${maxAge}; HttpOnly; SameSite=lax; Secure=${
-          process.env['NODE_ENV'] === 'production'
-        };`
-    ),
-  });
+  for (const cookie of cookieData) {
+    res.cookie(cookie.cookieName, cookie.cookieValue, {
+      path: '/',
+      maxAge: cookie.maxAge,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env['NODE_ENV'] === 'production',
+    });
+  }
 }
