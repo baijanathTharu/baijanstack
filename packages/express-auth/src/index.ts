@@ -1,1 +1,1 @@
-export * from './lib/express-auth';
+export { RouteGenerator, ISignUpPersistor } from './lib/express-auth';

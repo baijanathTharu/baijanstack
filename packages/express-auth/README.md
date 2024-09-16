@@ -1,11 +1,13 @@
 # express-auth
 
-This library was generated with [Nx](https://nx.dev).
+This library generates routes for authentication.
 
-## Building
+The routes are as follows:
 
-Run `nx build express-auth` to build the library.
+- **/v1/auth/signup**: This route handles sign up of new user.
 
-## Running unit tests
+- **/v1/auth/login**: This route handles login of user.
 
-Run `nx test express-auth` to execute the unit tests via [Jest](https://jestjs.io).
+- **/v1/auth/logout**: This route log outs user from the application.
+
+This library is independent of data persistence i.e. it is the job of the user to provide the implementation of the data persistence layer. It provides the interface for the persistence layer.
