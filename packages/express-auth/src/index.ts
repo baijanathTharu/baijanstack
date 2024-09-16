@@ -1,1 +1,5 @@
-export { RouteGenerator, ISignUpPersistor } from './lib/express-auth';
+export {
+  RouteGenerator,
+  ISignUpPersistor,
+  ILoginPersistor,
+} from './lib/express-auth';
