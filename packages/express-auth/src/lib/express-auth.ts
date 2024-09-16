@@ -28,10 +28,14 @@ export interface ILoginPersistor {
   tokenKeysFromBody: (body: any) => Promise<string[]>;
 }
 
+export interface ILogoutPersistor {
+  revokeTokens: () => Promise<boolean>;
+}
+
 interface IRouteGenerator {
   createSignUpRoute: (signUpPersistor: ISignUpPersistor) => ExpressApplication;
-  createLoginRoute: (loginPersistor: ILoginPersistor) => void;
-  createLogoutRoute: () => void;
+  createLoginRoute: (loginPersistor: ILoginPersistor) => ExpressApplication;
+  createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication;
 }
 
 const BASE_PATH = '/v1/auth';
@@ -54,6 +58,8 @@ export class RouteGenerator implements IRouteGenerator {
         });
         return;
       }
+
+      // !FIXME: password hashing & validations
       await signUpPersistor.saveUser(req.body);
 
       res.status(201).json({
@@ -117,7 +123,25 @@ export class RouteGenerator implements IRouteGenerator {
       });
     });
   }
-  createLogoutRoute() {
-    throw new Error('not implemented yet');
+
+  createLogoutRoute(logoutPersistor: ILogoutPersistor) {
+    return this.app.post(`${BASE_PATH}/logout`, async (req, res) => {
+      // !FIXME: get token and validate them
+
+      const cookies = req.headers.cookie;
+      console.debug('cookies received', cookies);
+
+      const isRevoked = await logoutPersistor.revokeTokens();
+
+      if (!isRevoked) {
+        res.status(400).json({
+          message: 'Failed to revoke token',
+        });
+      }
+
+      res.status(200).json({
+        message: 'Logged out successfully!!',
+      });
+    });
   }
 }

@@ -6,6 +6,7 @@ import { writeTestLogToFile } from '../test-util';
 
 import {
   ILoginPersistor,
+  ILogoutPersistor,
   ISignUpPersistor,
   RouteGenerator,
   TConfig,
@@ -78,6 +79,13 @@ class LoginPersistor implements ILoginPersistor {
   };
 }
 
+class LogoutPersistor implements ILogoutPersistor {
+  revokeTokens: () => Promise<boolean> = async () => {
+    console.log('code to revoke token');
+    return true;
+  };
+}
+
 describe('expressAuth', () => {
   let app: express.Application;
 
@@ -98,6 +106,10 @@ describe('expressAuth', () => {
     // login route
     const loginPersistor = new LoginPersistor();
     routeGenerator.createLoginRoute(loginPersistor);
+
+    // logout route
+    const logoutPersistor = new LogoutPersistor();
+    routeGenerator.createLogoutRoute(logoutPersistor);
   });
 
   it('should be able to create a user', async () => {
@@ -153,5 +165,16 @@ describe('expressAuth', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Logged in successfully!!');
+  });
+
+  it('should revoke token', async () => {
+    const res = await request(app)
+      .post('/v1/auth/logout')
+      .set('Cookie', [
+        'x-access-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJpYXQiOjE2NjUyNzYyMzgsImV4cCI6MTY2NTI3NjIzOH0.8QrJ4QKjzKdO0Z9nVJt5QD6vW1d5PwZw2OuZ6ZxYyI8',
+        'x-refresh-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJpYXQiOjE2NjUyNzYyMzgsImV4cCI6MTY2NTI3NjIzOH0.8QrJ4QKjzKdO0Z9nVJt5QD6vW1d5PwZw2OuZ6ZxYyI8',
+      ]);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Logged out successfully!!');
   });
 });
