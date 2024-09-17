@@ -6,8 +6,8 @@ export type TConfig = {
   TOKEN_SECRET: string;
   ACCESS_TOKEN_AGE: string;
   REFRESH_TOKEN_AGE: string;
-  ACCESS_TOKEN_COOKIE_MAX_AGE: number; // in milliseconds
-  REFRESH_TOKEN_COOKIE_MAX_AGE: number; // in milliseconds
+  ACCESS_TOKEN_COOKIE_MAX_AGE: number; // in seconds
+  REFRESH_TOKEN_COOKIE_MAX_AGE: number; // in seconds
 };
 
 export interface ISignUpPersistor {
@@ -32,10 +32,22 @@ export interface ILogoutPersistor {
   revokeTokens: () => Promise<boolean>;
 }
 
+export interface IRefreshPersistor {
+  errors: {
+    INVALID_REFRESH_TOKEN?: string;
+  };
+  isTokenEligibleForRefresh: (token: string) => Promise<boolean>;
+  refresh: (token: string) => Promise<void>;
+  getTokenPayload: () => Promise<any>;
+}
+
 interface IRouteGenerator {
   createSignUpRoute: (signUpPersistor: ISignUpPersistor) => ExpressApplication;
   createLoginRoute: (loginPersistor: ILoginPersistor) => ExpressApplication;
   createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication;
+  createRefreshRoute: (
+    refreshPersistor: IRefreshPersistor
+  ) => ExpressApplication;
 }
 
 const BASE_PATH = '/v1/auth';
@@ -144,4 +156,65 @@ export class RouteGenerator implements IRouteGenerator {
       });
     });
   }
+
+  createRefreshRoute: (
+    refreshPersistor: IRefreshPersistor
+  ) => ExpressApplication = (refreshPersistor) => {
+    return this.app.post(`${BASE_PATH}/refresh`, async (req, res) => {
+      // The refresh token comes in the cookie `x-refresh-token`
+
+      const cookies = req.headers.cookie;
+      if (!cookies) {
+        throw new Error('Refresh token not found in the cookie');
+      }
+      const parsedCookies = JSON.parse(cookies) as string[];
+
+      const refreshToken = parsedCookies[1];
+
+      const isEligible = await refreshPersistor.isTokenEligibleForRefresh(
+        refreshToken
+      );
+
+      if (!isEligible) {
+        throw new Error(
+          refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
+            'Refresh token is not eligible for refresh. It might be revoked.'
+        );
+      }
+
+      await refreshPersistor.isTokenEligibleForRefresh(refreshToken);
+      await refreshPersistor.refresh(refreshToken);
+
+      /**
+       * Generate new access token and refresh token and set on the cookie
+       */
+      const payload = await refreshPersistor.getTokenPayload();
+
+      const tokens = generateTokens(payload, {
+        tokenSecret: this.config.TOKEN_SECRET,
+        ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
+        REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
+      });
+
+      setCookies({
+        res,
+        cookieData: [
+          {
+            cookieName: 'x-access-token',
+            cookieValue: tokens.accessToken,
+            maxAge: this.config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+          },
+          {
+            cookieName: 'x-refresh-token',
+            cookieValue: tokens.refreshToken,
+            maxAge: this.config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+          },
+        ],
+      });
+
+      res.status(200).json({
+        message: 'Refresh token has been refreshed',
+      });
+    });
+  };
 }

@@ -108,3 +108,7 @@ export function setCookies({
     });
   }
 }
+
+export function getTokenValueCookie(cookieName: string) {
+  return cookieName.split(';')[0].split('=')[1];
+}
