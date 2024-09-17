@@ -7,6 +7,7 @@ import { writeTestLogToFile } from '../test-util';
 import {
   ILoginPersistor,
   ILogoutPersistor,
+  IRefreshPersistor,
   ISignUpPersistor,
   RouteGenerator,
   TConfig,
@@ -25,6 +26,21 @@ const users: TUser[] = [
     name: 'test',
     email: 'test@test.com',
     password: 'test',
+  },
+];
+
+type TRefreshToken = {
+  value: string;
+  isRevoked: boolean;
+  name: string;
+};
+
+const refreshTokens: TRefreshToken[] = [
+  {
+    name: 'ram',
+    value:
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI3MTkzODA5fQ.bEphhPRnuh5ZGhSCD2XODhAh7ycT14sGgvodmg2SH7E',
+    isRevoked: false,
   },
 ];
 
@@ -86,6 +102,27 @@ class LogoutPersistor implements ILogoutPersistor {
   };
 }
 
+class RefreshPersistor implements IRefreshPersistor {
+  errors: { INVALID_REFRESH_TOKEN?: string } = {};
+
+  isTokenEligibleForRefresh: (token: string) => Promise<boolean> = async (
+    token
+  ) => {
+    const tokenFound = refreshTokens.find((t) => t.value === token);
+    return !tokenFound?.isRevoked;
+  };
+
+  refresh: (token: string) => Promise<void> = async () => {
+    writeTestLogToFile(`Refreshing token...`);
+  };
+  getTokenPayload: () => Promise<Pick<TUser, 'name' | 'email'>> = async () => {
+    return {
+      name: 'ram',
+      email: 'ram@test.com',
+    };
+  };
+}
+
 describe('expressAuth', () => {
   let app: express.Application;
 
@@ -110,6 +147,10 @@ describe('expressAuth', () => {
     // logout route
     const logoutPersistor = new LogoutPersistor();
     routeGenerator.createLogoutRoute(logoutPersistor);
+
+    // refresh route
+    const refreshPersistor = new RefreshPersistor();
+    routeGenerator.createRefreshRoute(refreshPersistor);
   });
 
   it('should be able to create a user', async () => {
@@ -176,5 +217,43 @@ describe('expressAuth', () => {
       ]);
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Logged out successfully!!');
+  });
+
+  it('should refresh token', async () => {
+    const res = await request(app)
+      .post('/v1/auth/refresh')
+      .set('Cookie', [
+        'x-access-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI2NTg5OTA5fQ.4_JBB-Qg6Cfop_wP0QoTUi6KGDpaqqkjPeFS3Fd1gz4; Max-Age=900; Path=/; Expires=Tue, 17 Sep 2024 16:18:29 GMT; HttpOnly; SameSite=Lax',
+        'x-refresh-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI3MTkzODA5fQ.bEphhPRnuh5ZGhSCD2XODhAh7ycT14sGgvodmg2SH7E; Max-Age=604800; Path=/; Expires=Tue, 24 Sep 2024 16:03:29 GMT; HttpOnly; SameSite=Lax',
+      ]);
+
+    console.debug('refresh token body', res.body);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Refreshed token successfully!!');
+  });
+
+  it('should not be able to refresh token', async () => {
+    const res = await request(app)
+      .post('/v1/auth/refresh')
+      .set('Cookie', [
+        'x-access-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI2NTg5OTA5fQ.4_JBB-Qg6Cfop_wP0QoTUi6KGDpaqqkjPeFS3Fd1gz4; Max-Age=900; Path=/; Expires=Tue, 17 Sep 2024 16:18:29 GMT; HttpOnly; SameSite=Lax',
+        'x-refresh-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ0.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI3MTkzODA5fQ.bEphhPRnuh5ZGhSCD2XODhAh7ycT14sGgvodmg2SH7E; Max-Age=604800; Path=/; Expires=Tue, 24 Sep 2024 16:03:29 GMT; HttpOnly; SameSite=Lax',
+      ]);
+
+    console.debug('refresh token body', res.body);
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Token is invalid');
+  });
+
+  it('should not be able to refresh token if refresh token is not sent', async () => {
+    const res = await request(app)
+      .post('/v1/auth/refresh')
+      .set('Cookie', [
+        'x-access-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI2NTg5OTA5fQ.4_JBB-Qg6Cfop_wP0QoTUi6KGDpaqqkjPeFS3Fd1gz4; Max-Age=900; Path=/; Expires=Tue, 17 Sep 2024 16:18:29 GMT; HttpOnly; SameSite=Lax',
+      ]);
+
+    console.debug('refresh token body', res.body);
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Refresh token not found in the cookie');
   });
 });

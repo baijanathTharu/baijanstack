@@ -1,5 +1,10 @@
 import { Application as ExpressApplication } from 'express';
-import { generateTokens, setCookies } from '../utils';
+import {
+  generateTokens,
+  getTokenValueCookie,
+  setCookies,
+  verifyToken,
+} from '../utils';
 
 export type TConfig = {
   SALT_ROUNDS: string;
@@ -161,19 +166,38 @@ export class RouteGenerator implements IRouteGenerator {
       if (!cookies) {
         throw new Error('Refresh token not found in the cookie');
       }
-      const parsedCookies = JSON.parse(cookies) as string[];
+      console.debug('cookies received', cookies);
+      const refreshToken = getTokenValueCookie(cookies, 'x-refresh-token');
+      if (!refreshToken) {
+        res.status(400).json({
+          message: 'Refresh token not found in the cookie',
+        });
+        return;
+      }
 
-      const refreshToken = parsedCookies[1];
+      // check if token is valid or not
+      const isTokenValid = verifyToken({
+        token: refreshToken,
+        tokenSecret: this.config.TOKEN_SECRET,
+      });
+      if (!isTokenValid) {
+        res.status(400).json({
+          message: 'Token is invalid',
+        });
+        return;
+      }
 
       const isEligible = await refreshPersistor.isTokenEligibleForRefresh(
         refreshToken
       );
 
       if (!isEligible) {
-        throw new Error(
-          refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
-            'Refresh token is not eligible for refresh. It might be revoked.'
-        );
+        res.status(400).json({
+          message:
+            refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
+            'Refresh token is not eligible for refresh. It might be revoked.',
+        });
+        return;
       }
 
       await refreshPersistor.isTokenEligibleForRefresh(refreshToken);
@@ -207,7 +231,7 @@ export class RouteGenerator implements IRouteGenerator {
       });
 
       res.status(200).json({
-        message: 'Refresh token has been refreshed',
+        message: 'Refreshed token successfully!!',
       });
     });
   };

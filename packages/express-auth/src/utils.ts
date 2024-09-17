@@ -66,24 +66,22 @@ export function generateTokens(
 }
 
 // verify token
-export async function verifyToken({
+export function verifyToken({
   token,
   tokenSecret,
 }: {
   token: string;
   tokenSecret: string;
-}) {
+}): boolean {
   try {
-    const decodedAccessToken = verify(token, tokenSecret) as {
+    verify(token, tokenSecret) as {
       userId: number;
     };
 
-    return {
-      userId: decodedAccessToken.userId,
-    };
+    return true;
   } catch (error) {
-    console.log(error);
-    return { userId: null };
+    console.error('token verification error', error);
+    return false;
   }
 }
 
@@ -109,6 +107,13 @@ export function setCookies({
   }
 }
 
-export function getTokenValueCookie(cookieName: string) {
-  return cookieName.split(';')[0].split('=')[1];
+export function getTokenValueCookie(cookie: string, cookieName: string) {
+  /**
+   * Example token
+   * x-access-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI2NTg5OTA5fQ.4_JBB-Qg6Cfop_wP0QoTUi6KGDpaqqkjPeFS3Fd1gz4; Max-Age=900; Path=/; Expires=Tue, 17 Sep 2024 16:18:29 GMT; HttpOnly; SameSite=Lax; x-refresh-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTcyNjU4OTAwOSwiZXhwIjoxNzI3MTkzODA5fQ.bEphhPRnuh5ZGhSCD2XODhAh7ycT14sGgvodmg2SH7E; Max-Age=604800; Path=/; Expires=Tue, 24 Sep 2024 16:03:29 GMT; HttpOnly; SameSite=Lax
+   */
+
+  const splitted = cookie.split(`${cookieName}=`)[1]?.split(';');
+
+  return splitted?.length ? splitted[0] : '';
 }
