@@ -71,11 +71,11 @@ class LoginPersistor implements ILoginPersistor {
     return user?.password === body.password;
   };
 
-  tokenKeysFromBody: (body: TLoginInput) => Promise<string[]> = async (
-    body
-  ) => {
-    writeTestLogToFile(`getTokenInput: ${JSON.stringify(body)}`);
-    return ['email'];
+  getTokenPayload: () => Promise<Pick<TUser, 'name' | 'email'>> = async () => {
+    return {
+      name: 'test',
+      email: 'test@test.com',
+    };
   };
 }
 

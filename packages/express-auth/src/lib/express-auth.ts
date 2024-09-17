@@ -25,7 +25,7 @@ export interface ILoginPersistor {
   login: () => Promise<void>;
   doesUserExists: (body: any) => Promise<boolean>;
   doesPasswordMatch: (body: any) => Promise<boolean>;
-  tokenKeysFromBody: (body: any) => Promise<string[]>;
+  getTokenPayload: () => Promise<any>;
 }
 
 export interface ILogoutPersistor {
@@ -98,15 +98,9 @@ export class RouteGenerator implements IRouteGenerator {
         return;
       }
 
-      const keys = await logingPersistor.tokenKeysFromBody(req.body);
-      const tokenInput: Record<string, string> = {};
-      for (const key in req.body) {
-        if (keys.includes(key)) {
-          tokenInput[key] = req.body[key];
-        }
-      }
+      const payload = await logingPersistor.getTokenPayload();
 
-      const tokens = generateTokens(tokenInput, {
+      const tokens = generateTokens(payload, {
         tokenSecret: this.config.TOKEN_SECRET,
         ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
         REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
