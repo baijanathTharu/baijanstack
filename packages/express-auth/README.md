@@ -20,11 +20,13 @@ The routes are as follows:
 
 - [x] **/v1/auth/logout**: This route log outs user from the application.
 
-- [ ] **/v1/auth/refresh**: This route refreshes the access token.
+- [x] **/v1/auth/refresh**: This route refreshes the access token.
+
+- [x] **/v1/auth/reset-password**: This route resets the password of the logged in user.
+
+- [ ] **/v1/auth/forgot-password**: This route sends the link to reset the password.
 
 - [ ] **/v1/auth/verify-email**: This route verifies the email.
-
-- [ ] **/v1/auth/reset-password**: This route resets the password.
 
 This library is independent of data persistence i.e. it is the job of the user to provide the implementation of the data persistence layer. It provides the interface for the persistence layer.
 

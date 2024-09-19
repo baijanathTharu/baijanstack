@@ -9,10 +9,12 @@ export function hashPassword(
   return new Promise((resolve, reject) => {
     genSalt(saltRounds, (err, salt) => {
       if (err) {
+        console.error(err);
         reject([err, null]);
       }
       hash(password, salt, (hashErr, hashedPassword) => {
         if (hashErr) {
+          console.error(hashErr);
           reject([hashErr, null]);
         }
         resolve([null, hashedPassword]);
@@ -31,6 +33,7 @@ export function comparePassword({
   return new Promise((resolve, reject) => {
     compare(password, hashedPassword, (err, result) => {
       if (err) {
+        console.error(err);
         reject([err, null]);
       }
       resolve([null, result]);
@@ -72,13 +75,10 @@ export function verifyToken({
 }: {
   token: string;
   tokenSecret: string;
-}): boolean {
+}) {
   try {
-    verify(token, tokenSecret) as {
-      userId: number;
-    };
-
-    return true;
+    const decoded = verify(token, tokenSecret);
+    return decoded;
   } catch (error) {
     console.error('token verification error', error);
     return false;
