@@ -7,7 +7,6 @@ import {
 import {
   comparePassword,
   generateTokens,
-  getTokenValueCookie,
   hashPassword,
   setCookies,
   verifyToken,
@@ -39,10 +38,12 @@ export interface ILoginPersistor {
   login: () => Promise<void>;
   doesUserExists: (body: any) => Promise<boolean>;
   doesPasswordMatch: (body: any) => Promise<boolean>;
-  getTokenPayload: () => Promise<any>;
+  // contains email in body
+  getTokenPayload: (body: any) => Promise<any>;
 }
 
 export interface ILogoutPersistor {
+  // TODO: need to implement this
   revokeTokens: () => Promise<boolean>;
 }
 
@@ -64,7 +65,7 @@ export interface IResetPasswordPersistor {
   getOldPasswordHash: () => Promise<string>;
 }
 
-interface IMeRoutePersistor {
+export interface IMeRoutePersistor {
   getMeByUserId: () => Promise<any>;
 }
 
@@ -155,7 +156,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         return;
       }
 
-      const payload = await logingPersistor.getTokenPayload();
+      const payload = await logingPersistor.getTokenPayload(req.body);
 
       const tokens = generateTokens(payload, {
         tokenSecret: this.config.TOKEN_SECRET,
