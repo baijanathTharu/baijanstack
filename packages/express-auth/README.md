@@ -24,6 +24,8 @@ The routes are as follows:
 
 - [x] **/v1/auth/reset-password**: This route resets the password of the logged in user.
 
+- [x] **/v1/auth/me**: This route returns the details of logged in user.
+
 - [ ] **/v1/auth/forgot-password**: This route sends the link to reset the password.
 
 - [ ] **/v1/auth/verify-email**: This route verifies the email.
