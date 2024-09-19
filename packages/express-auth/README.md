@@ -1,5 +1,7 @@
 # express-auth
 
+> ! This library is under active development. Please do not use it in production.
+
 This library generates routes for authentication.
 
 ## Usage
@@ -7,10 +9,12 @@ This library generates routes for authentication.
 1. Install the dependency.
 
 ```bash
-npm install @baijanstack/express-auth
+npm install @baijanstack/express-auth@0.0.0-alpha.9
 ```
 
-## Descriptions
+## Description
+
+This library uses email-password authentication flow for authentication. It generates routes for authentication and provides the interface for the persistence layer. It uses access token and refresh token for authentication. The tokens are stored in cookies.
 
 The routes are as follows:
 
@@ -22,15 +26,13 @@ The routes are as follows:
 
 - [x] **/v1/auth/refresh**: This route refreshes the access token.
 
-- [x] **/v1/auth/reset-password**: This route resets the password of the logged in user.
-
 - [x] **/v1/auth/me**: This route returns the details of logged in user.
+
+- [ ] **/v1/auth/reset-password**: This route resets the password of the logged in user.
 
 - [ ] **/v1/auth/forgot-password**: This route sends the link to reset the password.
 
 - [ ] **/v1/auth/verify-email**: This route verifies the email.
-
-This library is independent of data persistence i.e. it is the job of the user to provide the implementation of the data persistence layer. It provides the interface for the persistence layer.
 
 # Important Notes
 
@@ -39,14 +41,16 @@ Following environment variables must be set:
 The type of the config is TConfig defined in `@baijanstack/express-auth`
 
 ```bash
-export SALT_ROUNDS=10
-export TOKEN_SECRET=secret
-export ACCESS_TOKEN_AGE=900000 # default is 15 minutes
-export REFRESH_TOKEN_AGE=6.048e+8 # default is 7 days
+SALT_ROUNDS=10
+TOKEN_SECRET=random_secure_secret_value
+ACCESS_TOKEN_AGE=60000
+REFRESH_TOKEN_AGE=240000
+ACCESS_TOKEN_COOKIE_MAX_AGE=60
+REFRESH_TOKEN_COOKIE_MAX_AGE=86400
 ```
 
-> Secret can be generated using `openssl`
+## Example
 
-```bash
-openssl rand -base64 32
-```
+Below is an example of how to use this library.
+
+[Sample Auth Example](https://github.com/baijanathTharu/sample-auth-example)
