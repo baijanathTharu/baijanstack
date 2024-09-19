@@ -1,3 +1,9 @@
+import { config as dConfig } from 'dotenv';
+
+dConfig({
+  path: '.env',
+});
+
 import {
   Application as ExpressApplication,
   Request,
