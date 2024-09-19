@@ -97,12 +97,19 @@ interface IRouteMiddlewares {
 
 const BASE_PATH = '/v1/auth';
 
-export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
-  private config: TConfig;
+const config: TConfig = {
+  SALT_ROUNDS: Number(process.env['SALT_ROUNDS']) || 10,
+  TOKEN_SECRET: process.env['TOKEN_SECRET'] || 'test',
+  ACCESS_TOKEN_AGE: process.env['ACCESS_TOKEN_AGE'] || '60',
+  REFRESH_TOKEN_AGE: process.env['REFRESH_TOKEN_AGE'] || '3600',
+  ACCESS_TOKEN_COOKIE_MAX_AGE:
+    Number(process.env['ACCESS_TOKEN_COOKIE_MAX_AGE']) || 60,
+  REFRESH_TOKEN_COOKIE_MAX_AGE:
+    Number(process.env['REFRESH_TOKEN_COOKIE_MAX_AGE']) || 3600,
+};
 
-  constructor(private app: ExpressApplication, config: TConfig) {
-    this.config = config;
-  }
+export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
+  constructor(private app: ExpressApplication) {}
 
   createSignUpRoute(signUpPersistor: ISignUpPersistor) {
     return this.app.post(`${BASE_PATH}/signup`, async (req, res) => {
@@ -120,7 +127,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
       const [_, hashedPasswordStr] = await hashPassword(
         req.body.password,
-        this.config.SALT_ROUNDS
+        config.SALT_ROUNDS
       );
 
       if (!hashedPasswordStr) {
@@ -159,9 +166,9 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       const payload = await logingPersistor.getTokenPayload(req.body);
 
       const tokens = generateTokens(payload, {
-        tokenSecret: this.config.TOKEN_SECRET,
-        ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
-        REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
+        tokenSecret: config.TOKEN_SECRET,
+        ACCESS_TOKEN_AGE: config.ACCESS_TOKEN_AGE,
+        REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
       });
 
       await logingPersistor.login();
@@ -172,12 +179,12 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           {
             cookieName: 'x-access-token',
             cookieValue: tokens.accessToken,
-            maxAge: this.config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+            maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
           },
           {
             cookieName: 'x-refresh-token',
             cookieValue: tokens.refreshToken,
-            maxAge: this.config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+            maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
           },
         ],
       });
@@ -228,7 +235,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     // check if token is valid or not
     const isTokenValid = verifyToken({
       token,
-      tokenSecret: this.config.TOKEN_SECRET,
+      tokenSecret: config.TOKEN_SECRET,
     });
     if (!isTokenValid) {
       res.status(400).json({
@@ -263,7 +270,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     // check if token is valid or not
     const isTokenValid = verifyToken({
       token,
-      tokenSecret: this.config.TOKEN_SECRET,
+      tokenSecret: config.TOKEN_SECRET,
     });
     if (!isTokenValid) {
       res.status(400).json({
@@ -310,9 +317,9 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         const payload = await refreshPersistor.getTokenPayload();
 
         const tokens = generateTokens(payload, {
-          tokenSecret: this.config.TOKEN_SECRET,
-          ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
-          REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
+          tokenSecret: config.TOKEN_SECRET,
+          ACCESS_TOKEN_AGE: config.ACCESS_TOKEN_AGE,
+          REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
         });
 
         setCookies({
@@ -321,12 +328,12 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             {
               cookieName: 'x-access-token',
               cookieValue: tokens.accessToken,
-              maxAge: this.config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
             },
             {
               cookieName: 'x-refresh-token',
               cookieValue: tokens.refreshToken,
-              maxAge: this.config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
             },
           ],
         });
@@ -365,7 +372,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         // hash the new password and save in the database
         const [, hashedPassword] = await hashPassword(
           newPassword,
-          this.config.SALT_ROUNDS
+          config.SALT_ROUNDS
         );
 
         if (!hashedPassword) {
@@ -393,7 +400,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
         const decodedToken = verifyToken({
           token: accessToken,
-          tokenSecret: this.config.TOKEN_SECRET,
+          tokenSecret: config.TOKEN_SECRET,
         });
 
         res.status(200).json({
