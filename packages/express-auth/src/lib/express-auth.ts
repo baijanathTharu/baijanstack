@@ -42,10 +42,11 @@ export interface ILoginPersistor {
     PASSWORD_OR_EMAIL_INCORRECT?: string;
   };
   login: () => Promise<void>;
-  doesUserExists: (body: any) => Promise<boolean>;
-  doesPasswordMatch: (body: any) => Promise<boolean>;
+  // doesUserExists: (body: any) => Promise<boolean>;
+  // doesPasswordMatch: (hashedPassword: string) => Promise<boolean>;
   // contains email in body
-  getTokenPayload: (body: any) => Promise<any>;
+  getTokenPayload: (email: string) => Promise<any>;
+  getUserByEmail: (email: string) => Promise<any>;
 }
 
 export interface ILogoutPersistor {
@@ -153,15 +154,20 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
   createLoginRoute(logingPersistor: ILoginPersistor) {
     return this.app.post(`${BASE_PATH}/login`, async (req, res) => {
-      const isUserExists = await logingPersistor.doesUserExists(req.body);
-      if (!isUserExists) {
+      const user = await logingPersistor.getUserByEmail(req.body.email);
+
+      if (!user) {
         res.status(409).json({
           message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
         });
         return;
       }
 
-      const isPasswordMatch = await logingPersistor.doesPasswordMatch(req.body);
+      const [_, isPasswordMatch] = await comparePassword({
+        password: req.body.password,
+        hashedPassword: user.password,
+      });
+
       if (!isPasswordMatch) {
         res.status(409).json({
           message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
@@ -169,7 +175,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         return;
       }
 
-      const payload = await logingPersistor.getTokenPayload(req.body);
+      const payload = await logingPersistor.getTokenPayload(req.body.email);
 
       const tokens = generateTokens(payload, {
         tokenSecret: config.TOKEN_SECRET,
