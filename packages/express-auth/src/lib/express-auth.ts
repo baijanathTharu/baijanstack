@@ -320,14 +320,47 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           return;
         }
 
-        await refreshPersistor.isTokenEligibleForRefresh(refreshToken);
-        await refreshPersistor.refresh(refreshToken);
+        const isEligibleForRefresh =
+          await refreshPersistor.isTokenEligibleForRefresh(refreshToken);
+
+        if (!isEligibleForRefresh) {
+          res.status(400).json({
+            message:
+              refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
+              'Refresh token is not eligible for refresh. It might be revoked.',
+          });
+          return;
+        }
+
+        // validate the refreshToken
+        const decodedToken = await verifyToken({
+          token: refreshToken,
+          tokenSecret: config.TOKEN_SECRET,
+        });
+
+        if (!decodedToken) {
+          res.status(400).json({
+            message:
+              refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
+              'Refresh token could not be verified',
+          });
+          return;
+        }
 
         /**
          * Generate new access token and refresh token and set on the cookie
          */
-        // !FIXME: send the correct email
-        const payload = await refreshPersistor.getTokenPayload('test@test.com');
+        if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
+          res.status(400).json({
+            message:
+              refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
+              'Decoded token is not an object with email property',
+          });
+          return;
+        }
+        const payload = await refreshPersistor.getTokenPayload(
+          decodedToken['email']
+        );
 
         const tokens = generateTokens(payload, {
           tokenSecret: config.TOKEN_SECRET,
@@ -350,6 +383,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             },
           ],
         });
+
+        await refreshPersistor.refresh(refreshToken);
 
         res.status(200).json({
           message: 'Refreshed token successfully!!',
