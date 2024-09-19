@@ -54,3 +54,5 @@ REFRESH_TOKEN_COOKIE_MAX_AGE=86400
 Below is an example of how to use this library.
 
 [Sample Auth Example](https://github.com/baijanathTharu/sample-auth-example)
+
+[Repo Link](https://github.com/baijanathTharu/baijanstack/tree/main/packages/express-auth)
