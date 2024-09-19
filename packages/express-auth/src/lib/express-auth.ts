@@ -60,7 +60,7 @@ export interface IRefreshPersistor {
   };
   isTokenEligibleForRefresh: (token: string) => Promise<boolean>;
   refresh: (token: string) => Promise<void>;
-  getTokenPayload: () => Promise<any>;
+  getTokenPayload: (email: string) => Promise<any>;
 }
 
 /**
@@ -326,7 +326,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         /**
          * Generate new access token and refresh token and set on the cookie
          */
-        const payload = await refreshPersistor.getTokenPayload();
+        // !FIXME: send the correct email
+        const payload = await refreshPersistor.getTokenPayload('test@test.com');
 
         const tokens = generateTokens(payload, {
           tokenSecret: config.TOKEN_SECRET,
