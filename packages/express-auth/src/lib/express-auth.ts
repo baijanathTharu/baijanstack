@@ -238,6 +238,22 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           return;
         }
 
+        setCookies({
+          res,
+          cookieData: [
+            {
+              cookieName: 'x-access-token',
+              cookieValue: '',
+              maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+            },
+            {
+              cookieName: 'x-refresh-token',
+              cookieValue: '',
+              maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+            },
+          ],
+        });
+
         res.status(200).json({
           message: 'Logged out successfully!!',
         });
