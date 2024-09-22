@@ -50,8 +50,10 @@ export interface ILoginPersistor {
 }
 
 export interface ILogoutPersistor {
-  // TODO: need to implement this
-  revokeTokens: () => Promise<boolean>;
+  revokeTokens: (token: {
+    refreshToken: string;
+    accessToken: string;
+  }) => Promise<boolean>;
 }
 
 export interface IRefreshPersistor {
@@ -130,7 +132,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         return;
       }
 
-      // !FIXME: password hashing & validations
+      // !FIXME: password validations can be done here
 
       const [_, hashedPasswordStr] = await hashPassword(
         req.body.password,
@@ -207,25 +209,40 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     });
   }
 
+  /**
+   * We need to revoke the refresh token.
+   * validate token
+   */
   createLogoutRoute(logoutPersistor: ILogoutPersistor) {
-    return this.app.post(`${BASE_PATH}/logout`, async (req, res) => {
-      // !FIXME: get token and validate them
+    return this.app.post(
+      `${BASE_PATH}/logout`,
+      this.validateAccessToken,
+      this.validateRefreshToken,
+      async (req, res) => {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        const accessToken = req['accessToken'];
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        const refreshToken = req['refreshToken'];
 
-      const cookies = req.headers.cookie;
-      console.debug('cookies received', cookies);
+        const isRevoked = await logoutPersistor.revokeTokens({
+          refreshToken,
+          accessToken,
+        });
 
-      const isRevoked = await logoutPersistor.revokeTokens();
+        if (!isRevoked) {
+          res.status(500).json({
+            message: 'Failed to revoke the tokens',
+          });
+          return;
+        }
 
-      if (!isRevoked) {
-        res.status(400).json({
-          message: 'Failed to revoke token',
+        res.status(200).json({
+          message: 'Logged out successfully!!',
         });
       }
-
-      res.status(200).json({
-        message: 'Logged out successfully!!',
-      });
-    });
+    );
   }
 
   validateAccessToken(req: Request, res: Response, next: NextFunction) {
@@ -239,7 +256,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     const token = cookies['x-access-token'];
     if (!token) {
       res.status(400).json({
-        message: 'Token not found in the cookie',
+        message: 'Access token not found in the cookie',
       });
       return;
     }
@@ -251,7 +268,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     });
     if (!isTokenValid) {
       res.status(400).json({
-        message: 'Token is invalid',
+        message: 'Access Token is invalid',
       });
       return;
     }
@@ -274,7 +291,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     const token = cookies['x-refresh-token'];
     if (!token) {
       res.status(400).json({
-        message: 'Token not found in the cookie',
+        message: 'Refresh Token not found in the cookie',
       });
       return;
     }
