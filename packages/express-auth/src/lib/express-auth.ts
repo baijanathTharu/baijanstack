@@ -71,7 +71,7 @@ export interface IRefreshPersistor {
  */
 export interface IResetPasswordPersistor {
   saveHashedPassword: (email: string, hashedPassword: string) => Promise<void>;
-  getOldPasswordHash: () => Promise<string>;
+  getOldPasswordHash: (email: string) => Promise<string>;
 }
 
 export interface IMeRoutePersistor {
@@ -435,21 +435,6 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         const oldPassword = req.body.oldPassword;
         const newPassword = req.body.newPassword;
 
-        const oldPasswordHash =
-          await resetPasswordPersistor.getOldPasswordHash();
-
-        // validating the old password
-        const [, isOldPasswordValid] = await comparePassword({
-          password: oldPassword,
-          hashedPassword: oldPasswordHash,
-        });
-        if (!isOldPasswordValid) {
-          res.status(403).json({
-            message: 'Old password or username is not valid',
-          });
-          return;
-        }
-
         /**
          * Get the email from the access token
          */
@@ -478,6 +463,24 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           return;
         }
 
+        const email = decodedToken['email'];
+
+        const oldPasswordHash = await resetPasswordPersistor.getOldPasswordHash(
+          email
+        );
+
+        // validating the old password
+        const [, isOldPasswordValid] = await comparePassword({
+          password: oldPassword,
+          hashedPassword: oldPasswordHash,
+        });
+        if (!isOldPasswordValid) {
+          res.status(403).json({
+            message: 'Old password or username is not valid',
+          });
+          return;
+        }
+
         // hash the new password and save in the database
         const [, hashedPassword] = await hashPassword(
           newPassword,
@@ -491,7 +494,6 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           return;
         }
 
-        const email = decodedToken['email'];
         await resetPasswordPersistor.saveHashedPassword(email, hashedPassword);
 
         /**
