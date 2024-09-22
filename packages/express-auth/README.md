@@ -9,7 +9,7 @@ This library generates routes for authentication.
 1. Install the dependency.
 
 ```bash
-npm install @baijanstack/express-auth@0.0.0-alpha.13
+npm install @baijanstack/express-auth@0.0.0-alpha.14
 ```
 
 ## Description
@@ -28,7 +28,7 @@ The routes are as follows:
 
 - [x] **/v1/auth/me**: This route returns the details of logged in user.
 
-- [ ] **/v1/auth/reset-password**: This route resets the password of the logged in user.
+- [x] **/v1/auth/reset-password**: This route resets the password of the logged in user.
 
 - [ ] **/v1/auth/forgot-password**: This route sends the link to reset the password.
 

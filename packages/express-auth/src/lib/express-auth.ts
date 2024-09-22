@@ -70,7 +70,7 @@ export interface IRefreshPersistor {
  * Access token, old password and new password are sent in the request.
  */
 export interface IResetPasswordPersistor {
-  saveHashedPassword: (hashedPassword: string) => Promise<void>;
+  saveHashedPassword: (email: string, hashedPassword: string) => Promise<void>;
   getOldPasswordHash: () => Promise<string>;
 }
 
@@ -445,7 +445,35 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         });
         if (!isOldPasswordValid) {
           res.status(403).json({
-            message: 'Old password or username not valid',
+            message: 'Old password or username is not valid',
+          });
+          return;
+        }
+
+        /**
+         * Get the email from the access token
+         */
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        const accessToken = req['accessToken'];
+        const decodedToken = await verifyToken({
+          token: accessToken,
+          tokenSecret: config.TOKEN_SECRET,
+        });
+
+        if (!decodedToken) {
+          res.status(500).json({
+            message: 'Access token could not be verified',
+          });
+          return;
+        }
+
+        /**
+         * Generate new access token and refresh token and set on the cookie
+         */
+        if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
+          res.status(400).json({
+            message: 'Decoded token is not an object with email property',
           });
           return;
         }
@@ -458,12 +486,36 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
         if (!hashedPassword) {
           res.status(500).json({
-            message: 'Password could not be hased',
+            message: 'Password could not be hashed',
           });
           return;
         }
 
-        await resetPasswordPersistor.saveHashedPassword(hashedPassword);
+        const email = decodedToken['email'];
+        await resetPasswordPersistor.saveHashedPassword(email, hashedPassword);
+
+        /**
+         * logout
+         */
+        setCookies({
+          res,
+          cookieData: [
+            {
+              cookieName: 'x-access-token',
+              cookieValue: '',
+              maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+            },
+            {
+              cookieName: 'x-refresh-token',
+              cookieValue: '',
+              maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+            },
+          ],
+        });
+
+        res.status(200).json({
+          message: 'Password has been reset sucessfully! Please login again',
+        });
       }
     );
   }
