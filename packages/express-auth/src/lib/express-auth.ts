@@ -77,7 +77,7 @@ export interface ILoginPersistor<
   /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
-  getTokenPayload: (email: string) => Promise<TLoginOutput>;
+  getTokenPayload: (email: string) => Promise<Omit<TLoginOutput, 'password'>>;
 
   /**
    * Returns the user data from the storage that must contain `email`
