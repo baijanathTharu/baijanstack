@@ -48,8 +48,8 @@ export function generateTokens(
     REFRESH_TOKEN_AGE,
     tokenSecret,
   }: {
-    ACCESS_TOKEN_AGE: string;
-    REFRESH_TOKEN_AGE: string;
+    ACCESS_TOKEN_AGE: number;
+    REFRESH_TOKEN_AGE: number;
     tokenSecret: string;
   }
 ): {

@@ -19,50 +19,99 @@ import {
 } from '../utils';
 
 export type TConfig = {
+  /**
+   * Base path for all routes for e.g. `/v1/auth`
+   */
+  BASE_PATH: string;
+
+  /**
+   * Number of rounds for password hashing
+   */
   SALT_ROUNDS: number;
+
+  /**
+   * Secret used for generating access and refresh tokens
+   */
   TOKEN_SECRET: string;
-  ACCESS_TOKEN_AGE: string;
-  REFRESH_TOKEN_AGE: string;
-  ACCESS_TOKEN_COOKIE_MAX_AGE: number; // in seconds
-  REFRESH_TOKEN_COOKIE_MAX_AGE: number; // in seconds
+
+  /**
+   * Age of access tokens when token is signed in seconds
+   */
+  ACCESS_TOKEN_AGE: number;
+
+  /**
+   * Age of refresh tokens when token is signed in seconds
+   */
+  REFRESH_TOKEN_AGE: number;
 };
 
-export interface ISignUpPersistor {
+export interface ISignUpPersistor<TSignUpBodyInput extends { email: string }> {
   errors: {
+    /**
+     * Message that will be returned if user already exists
+     */
     USER_ALREADY_EXISTS_MESSAGE?: string;
   };
-  // body should contain password
-  doesUserExists: (body: any) => Promise<boolean>;
-  // body should contain password
-  saveUser: (body: any, hashedPassword: string) => Promise<void>;
+
+  /**
+   * Returns true if user already exists in the storage
+   */
+  doesUserExists: (body: TSignUpBodyInput) => Promise<boolean>;
+
+  /**
+   * Saves user in the storage after hashing password
+   */
+  saveUser: (body: TSignUpBodyInput, hashedPassword: string) => Promise<void>;
 }
 
-export interface ILoginPersistor {
+export interface ILoginPersistor<
+  TLoginOutput extends { email: string; password: string }
+> {
   errors: {
+    /**
+     * Message that will be returned if password or email is incorrect
+     */
     PASSWORD_OR_EMAIL_INCORRECT?: string;
   };
-  login: () => Promise<void>;
-  // doesUserExists: (body: any) => Promise<boolean>;
-  // doesPasswordMatch: (hashedPassword: string) => Promise<boolean>;
-  // contains email in body
-  getTokenPayload: (email: string) => Promise<any>;
-  getUserByEmail: (email: string) => Promise<any>;
+
+  /**
+   * Returns the payload object that is signed in the access and refresh tokens
+   */
+  getTokenPayload: (email: string) => Promise<TLoginOutput>;
+
+  /**
+   * Returns the user data from the storage that must contain `email`
+   */
+  getUserByEmail: (email: string) => Promise<TLoginOutput>;
 }
 
 export interface ILogoutPersistor {
+  /**
+   * Revokes access and refresh tokens
+   */
   revokeTokens: (token: {
     refreshToken: string;
     accessToken: string;
   }) => Promise<boolean>;
 }
 
-export interface IRefreshPersistor {
+export interface IRefreshPersistor<TRefreshOutput extends { email: string }> {
   errors: {
+    /**
+     * Message that will be returned if refresh token is invalid
+     */
     INVALID_REFRESH_TOKEN?: string;
   };
+
+  /**
+   * Returns true if token is eligible for refresh. The token might be revoked.
+   */
   isTokenEligibleForRefresh: (token: string) => Promise<boolean>;
-  refresh: (token: string) => Promise<void>;
-  getTokenPayload: (email: string) => Promise<any>;
+
+  /**
+   * Returns the payload object that is signed in the access and refresh tokens
+   */
+  getTokenPayload: (email: string) => Promise<TRefreshOutput>;
 }
 
 /**
@@ -70,25 +119,50 @@ export interface IRefreshPersistor {
  * Access token, old password and new password are sent in the request.
  */
 export interface IResetPasswordPersistor {
-  saveHashedPassword: (email: string, hashedPassword: string) => Promise<void>;
+  /**
+   * Returns the user's old password hash from the storage
+   */
   getOldPasswordHash: (email: string) => Promise<string>;
+
+  /**
+   * Saves the new password hash in the storage
+   */
+  saveHashedPassword: (email: string, hashedPassword: string) => Promise<void>;
 }
 
-export interface IMeRoutePersistor {
-  getMeByUserId: () => Promise<any>;
+export interface IMeRoutePersistor<TMeOutput extends { email: string }> {
+  /**
+   * Returns the user data from the storage that must contain `email`
+   */
+  getMeByEmail: (email: string) => Promise<TMeOutput>;
 }
 
-interface IRouteGenerator {
-  createSignUpRoute: (signUpPersistor: ISignUpPersistor) => ExpressApplication;
-  createLoginRoute: (loginPersistor: ILoginPersistor) => ExpressApplication;
+type TEmailObj = {
+  email: string;
+};
+
+interface IRouteGenerator<
+  TSignUpBodyInput extends TEmailObj,
+  TLoginOutput extends TEmailObj & { password: string },
+  TRefreshOutput extends TEmailObj,
+  TMeOutput extends TEmailObj
+> {
+  createSignUpRoute: (
+    signUpPersistor: ISignUpPersistor<TSignUpBodyInput>
+  ) => ExpressApplication;
+  createLoginRoute: (
+    loginPersistor: ILoginPersistor<TLoginOutput>
+  ) => ExpressApplication;
   createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication;
   createRefreshRoute: (
-    refreshPersistor: IRefreshPersistor
+    refreshPersistor: IRefreshPersistor<TRefreshOutput>
   ) => ExpressApplication;
   createResetPasswordRoute: (
     resetPasswordPersistor: IResetPasswordPersistor
   ) => ExpressApplication;
-  createMeRoute: (meRoutePersistor: IMeRoutePersistor) => ExpressApplication;
+  createMeRoute: (
+    meRoutePersistor: IMeRoutePersistor<TMeOutput>
+  ) => ExpressApplication;
 }
 
 interface IRouteMiddlewares {
@@ -104,24 +178,27 @@ interface IRouteMiddlewares {
   ) => void;
 }
 
-const BASE_PATH = '/v1/auth';
-
 const config: TConfig = {
+  BASE_PATH: '/v1/auth',
   SALT_ROUNDS: Number(process.env['SALT_ROUNDS']) || 10,
-  TOKEN_SECRET: process.env['TOKEN_SECRET'] || 'test',
-  ACCESS_TOKEN_AGE: process.env['ACCESS_TOKEN_AGE'] || '60',
-  REFRESH_TOKEN_AGE: process.env['REFRESH_TOKEN_AGE'] || '3600',
-  ACCESS_TOKEN_COOKIE_MAX_AGE:
-    Number(process.env['ACCESS_TOKEN_COOKIE_MAX_AGE']) || 60,
-  REFRESH_TOKEN_COOKIE_MAX_AGE:
-    Number(process.env['REFRESH_TOKEN_COOKIE_MAX_AGE']) || 3600,
+  TOKEN_SECRET: process.env['TOKEN_SECRET'] || '',
+  ACCESS_TOKEN_AGE: Number(process.env['ACCESS_TOKEN_AGE']) || 60,
+  REFRESH_TOKEN_AGE: Number(process.env['REFRESH_TOKEN_AGE']) || 3600,
 };
 
-export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
+export class RouteGenerator<
+  TSignUpBodyInput extends TEmailObj,
+  TLoginOutput extends TEmailObj & { password: string },
+  TRefreshOutput extends TEmailObj,
+  TMeOutput extends TEmailObj
+> implements
+    IRouteGenerator<TSignUpBodyInput, TLoginOutput, TRefreshOutput, TMeOutput>,
+    IRouteMiddlewares
+{
   constructor(private app: ExpressApplication) {}
 
-  createSignUpRoute(signUpPersistor: ISignUpPersistor) {
-    return this.app.post(`${BASE_PATH}/signup`, async (req, res) => {
+  createSignUpRoute(signUpPersistor: ISignUpPersistor<TSignUpBodyInput>) {
+    return this.app.post(`${config.BASE_PATH}/signup`, async (req, res) => {
       const isUserExists = await signUpPersistor.doesUserExists(req.body);
       if (isUserExists) {
         res.status(409).json({
@@ -133,7 +210,6 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       }
 
       // !FIXME: password validations can be done here
-
       const [_, hashedPasswordStr] = await hashPassword(
         req.body.password,
         config.SALT_ROUNDS
@@ -154,8 +230,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     });
   }
 
-  createLoginRoute(logingPersistor: ILoginPersistor) {
-    return this.app.post(`${BASE_PATH}/login`, async (req, res) => {
+  createLoginRoute(logingPersistor: ILoginPersistor<TLoginOutput>) {
+    return this.app.post(`${config.BASE_PATH}/login`, async (req, res) => {
       const user = await logingPersistor.getUserByEmail(req.body.email);
 
       if (!user) {
@@ -185,20 +261,18 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
       });
 
-      await logingPersistor.login();
-
       setCookies({
         res,
         cookieData: [
           {
             cookieName: 'x-access-token',
             cookieValue: tokens.accessToken,
-            maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+            maxAge: config.ACCESS_TOKEN_AGE * 1000,
           },
           {
             cookieName: 'x-refresh-token',
             cookieValue: tokens.refreshToken,
-            maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+            maxAge: config.REFRESH_TOKEN_AGE * 1000,
           },
         ],
       });
@@ -209,13 +283,9 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     });
   }
 
-  /**
-   * We need to revoke the refresh token.
-   * validate token
-   */
   createLogoutRoute(logoutPersistor: ILogoutPersistor) {
     return this.app.post(
-      `${BASE_PATH}/logout`,
+      `${config.BASE_PATH}/logout`,
       this.validateAccessToken,
       this.validateRefreshToken,
       async (req, res) => {
@@ -244,12 +314,12 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             {
               cookieName: 'x-access-token',
               cookieValue: '',
-              maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.ACCESS_TOKEN_AGE * 1000,
             },
             {
               cookieName: 'x-refresh-token',
               cookieValue: '',
-              maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.REFRESH_TOKEN_AGE * 1000,
             },
           ],
         });
@@ -331,9 +401,9 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     next();
   }
 
-  createRefreshRoute(refreshPersistor: IRefreshPersistor) {
+  createRefreshRoute(refreshPersistor: IRefreshPersistor<TRefreshOutput>) {
     return this.app.post(
-      `${BASE_PATH}/refresh`,
+      `${config.BASE_PATH}/refresh`,
       this.validateRefreshToken,
       async (req, res) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -407,17 +477,15 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             {
               cookieName: 'x-access-token',
               cookieValue: tokens.accessToken,
-              maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.ACCESS_TOKEN_AGE * 1000,
             },
             {
               cookieName: 'x-refresh-token',
               cookieValue: tokens.refreshToken,
-              maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.REFRESH_TOKEN_AGE * 1000,
             },
           ],
         });
-
-        await refreshPersistor.refresh(refreshToken);
 
         res.status(200).json({
           message: 'Refreshed token successfully!!',
@@ -428,7 +496,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
   createResetPasswordRoute(resetPasswordPersistor: IResetPasswordPersistor) {
     return this.app.post(
-      `${BASE_PATH}/reset`,
+      `${config.BASE_PATH}/reset`,
       this.validateAccessToken,
       async (req, res) => {
         // body has oldPassword and newPassword
@@ -505,12 +573,12 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             {
               cookieName: 'x-access-token',
               cookieValue: '',
-              maxAge: config.ACCESS_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.ACCESS_TOKEN_AGE * 1000,
             },
             {
               cookieName: 'x-refresh-token',
               cookieValue: '',
-              maxAge: config.REFRESH_TOKEN_COOKIE_MAX_AGE,
+              maxAge: config.REFRESH_TOKEN_AGE * 1000,
             },
           ],
         });
@@ -522,13 +590,11 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     );
   }
 
-  createMeRoute(meRoutePersistor: IMeRoutePersistor) {
+  createMeRoute(meRoutePersistor: IMeRoutePersistor<TMeOutput>) {
     return this.app.get(
-      `${BASE_PATH}/me`,
+      `${config.BASE_PATH}/me`,
       this.validateAccessToken,
       async (req, res) => {
-        await meRoutePersistor.getMeByUserId();
-
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
         const accessToken = req.accessToken;
@@ -538,8 +604,27 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           tokenSecret: config.TOKEN_SECRET,
         });
 
+        if (!decodedToken) {
+          res.status(500).json({
+            message: 'Access token could not be verified',
+          });
+          return;
+        }
+
+        if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
+          res.status(400).json({
+            message: 'Decoded token is not an object with email property',
+          });
+          return;
+        }
+
+        const email = decodedToken['email'];
+
+        const meData = await meRoutePersistor.getMeByEmail(email);
+
         res.status(200).json({
           data: decodedToken,
+          me: meData,
         });
       }
     );
