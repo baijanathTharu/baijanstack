@@ -56,12 +56,17 @@ export interface ISignUpPersistor<P> {
   /**
    * Returns true if user already exists in the storage
    */
-  doesUserExists: (body: P) => Promise<boolean>;
+  doesUserExists: (
+    body: P extends { email: string } ? P : never
+  ) => Promise<boolean>;
 
   /**
    * Saves user in the storage after hashing password
    */
-  saveUser: (body: P, hashedPassword: string) => Promise<void>;
+  saveUser: (
+    body: P extends { email: string } ? P : never,
+    hashedPassword: string
+  ) => Promise<void>;
 }
 
 export interface ILoginPersistor<Q> {
@@ -80,7 +85,9 @@ export interface ILoginPersistor<Q> {
   /**
    * Returns the user data from the storage that must contain `email`
    */
-  getUserByEmail: (email: string) => Promise<Q>;
+  getUserByEmail: (
+    email: string
+  ) => Promise<Q extends { email: string; password: string } ? Q : null>;
 }
 
 export interface ILogoutPersistor {
@@ -109,7 +116,9 @@ export interface IRefreshPersistor<R> {
   /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
-  getTokenPayload: (email: string) => Promise<R>;
+  getTokenPayload: (
+    email: string
+  ) => Promise<R extends { email: string } ? R : null>;
 }
 
 /**
@@ -132,12 +141,10 @@ export interface IMeRoutePersistor<S> {
   /**
    * Returns the user data from the storage that must contain `email`
    */
-  getMeByEmail: (email: string) => Promise<S>;
+  getMeByEmail: (
+    email: string
+  ) => Promise<S extends { email: string } ? S : null>;
 }
-
-type TEmailObj = {
-  email: string;
-};
 
 interface IRouteGenerator<P, Q, R, S> {
   createSignUpRoute: (
@@ -175,18 +182,12 @@ const config: TConfig = {
   REFRESH_TOKEN_AGE: Number(process.env['REFRESH_TOKEN_AGE']) || 3600,
 };
 
-export class RouteGenerator<
-  TSignUpBodyInput extends TEmailObj,
-  TLoginOutput extends TEmailObj & { password: string },
-  TRefreshOutput extends TEmailObj,
-  TMeOutput extends TEmailObj
-> implements
-    IRouteGenerator<TSignUpBodyInput, TLoginOutput, TRefreshOutput, TMeOutput>,
-    IRouteMiddlewares
+export class RouteGenerator<P, Q, R, S>
+  implements IRouteGenerator<P, Q, R, S>, IRouteMiddlewares
 {
   constructor(private app: ExpressApplication) {}
 
-  createSignUpRoute(signUpPersistor: ISignUpPersistor<TSignUpBodyInput>) {
+  createSignUpRoute(signUpPersistor: ISignUpPersistor<P>) {
     return this.app.post(`${config.BASE_PATH}/signup`, async (req, res) => {
       const isUserExists = await signUpPersistor.doesUserExists(req.body);
       if (isUserExists) {
@@ -219,7 +220,7 @@ export class RouteGenerator<
     });
   }
 
-  createLoginRoute(logingPersistor: ILoginPersistor<TLoginOutput>) {
+  createLoginRoute(logingPersistor: ILoginPersistor<Q>) {
     return this.app.post(`${config.BASE_PATH}/login`, async (req, res) => {
       const user = await logingPersistor.getUserByEmail(req.body.email);
 
@@ -390,7 +391,7 @@ export class RouteGenerator<
     next();
   }
 
-  createRefreshRoute(refreshPersistor: IRefreshPersistor<TRefreshOutput>) {
+  createRefreshRoute(refreshPersistor: IRefreshPersistor<R>) {
     return this.app.post(
       `${config.BASE_PATH}/refresh`,
       this.validateRefreshToken,
@@ -579,7 +580,7 @@ export class RouteGenerator<
     );
   }
 
-  createMeRoute(meRoutePersistor: IMeRoutePersistor<TMeOutput>) {
+  createMeRoute(meRoutePersistor: IMeRoutePersistor<S>) {
     return this.app.get(
       `${config.BASE_PATH}/me`,
       this.validateAccessToken,
