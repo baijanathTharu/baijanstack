@@ -45,7 +45,7 @@ export type TConfig = {
   REFRESH_TOKEN_AGE: number;
 };
 
-export interface ISignUpPersistor<TSignUpBodyInput extends { email: string }> {
+export interface ISignUpPersistor<P> {
   errors: {
     /**
      * Message that will be returned if user already exists
@@ -56,17 +56,15 @@ export interface ISignUpPersistor<TSignUpBodyInput extends { email: string }> {
   /**
    * Returns true if user already exists in the storage
    */
-  doesUserExists: (body: TSignUpBodyInput) => Promise<boolean>;
+  doesUserExists: (body: P) => Promise<boolean>;
 
   /**
    * Saves user in the storage after hashing password
    */
-  saveUser: (body: TSignUpBodyInput, hashedPassword: string) => Promise<void>;
+  saveUser: (body: P, hashedPassword: string) => Promise<void>;
 }
 
-export interface ILoginPersistor<
-  TLoginOutput extends { email: string; password: string }
-> {
+export interface ILoginPersistor<Q> {
   errors: {
     /**
      * Message that will be returned if password or email is incorrect
@@ -77,12 +75,12 @@ export interface ILoginPersistor<
   /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
-  getTokenPayload: (email: string) => Promise<Omit<TLoginOutput, 'password'>>;
+  getTokenPayload: (email: string) => Promise<Omit<Q, 'password'>>;
 
   /**
    * Returns the user data from the storage that must contain `email`
    */
-  getUserByEmail: (email: string) => Promise<TLoginOutput>;
+  getUserByEmail: (email: string) => Promise<Q>;
 }
 
 export interface ILogoutPersistor {
@@ -95,7 +93,7 @@ export interface ILogoutPersistor {
   }) => Promise<boolean>;
 }
 
-export interface IRefreshPersistor<TRefreshOutput extends { email: string }> {
+export interface IRefreshPersistor<R> {
   errors: {
     /**
      * Message that will be returned if refresh token is invalid
@@ -111,7 +109,7 @@ export interface IRefreshPersistor<TRefreshOutput extends { email: string }> {
   /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
-  getTokenPayload: (email: string) => Promise<TRefreshOutput>;
+  getTokenPayload: (email: string) => Promise<R>;
 }
 
 /**
@@ -130,39 +128,30 @@ export interface IResetPasswordPersistor {
   saveHashedPassword: (email: string, hashedPassword: string) => Promise<void>;
 }
 
-export interface IMeRoutePersistor<TMeOutput extends { email: string }> {
+export interface IMeRoutePersistor<S> {
   /**
    * Returns the user data from the storage that must contain `email`
    */
-  getMeByEmail: (email: string) => Promise<TMeOutput>;
+  getMeByEmail: (email: string) => Promise<S>;
 }
 
 type TEmailObj = {
   email: string;
 };
 
-interface IRouteGenerator<
-  TSignUpBodyInput extends TEmailObj,
-  TLoginOutput extends TEmailObj & { password: string },
-  TRefreshOutput extends TEmailObj,
-  TMeOutput extends TEmailObj
-> {
+interface IRouteGenerator<P, Q, R, S> {
   createSignUpRoute: (
-    signUpPersistor: ISignUpPersistor<TSignUpBodyInput>
+    signUpPersistor: ISignUpPersistor<P>
   ) => ExpressApplication;
-  createLoginRoute: (
-    loginPersistor: ILoginPersistor<TLoginOutput>
-  ) => ExpressApplication;
+  createLoginRoute: (loginPersistor: ILoginPersistor<Q>) => ExpressApplication;
   createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication;
   createRefreshRoute: (
-    refreshPersistor: IRefreshPersistor<TRefreshOutput>
+    refreshPersistor: IRefreshPersistor<R>
   ) => ExpressApplication;
   createResetPasswordRoute: (
     resetPasswordPersistor: IResetPasswordPersistor
   ) => ExpressApplication;
-  createMeRoute: (
-    meRoutePersistor: IMeRoutePersistor<TMeOutput>
-  ) => ExpressApplication;
+  createMeRoute: (meRoutePersistor: IMeRoutePersistor<S>) => ExpressApplication;
 }
 
 interface IRouteMiddlewares {
