@@ -7,4 +7,5 @@ export {
   IResetPasswordPersistor,
   TConfig,
   IMeRoutePersistor,
+  IVerifyEmailPersistor,
 } from './lib/express-auth';

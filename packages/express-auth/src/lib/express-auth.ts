@@ -43,6 +43,11 @@ export type TConfig = {
    * Age of refresh tokens when token is signed in seconds
    */
   REFRESH_TOKEN_AGE: number;
+
+  /**
+   * Age of access token for email verification in seconds
+   */
+  EMAIL_VERIFICATION_TOKEN_AGE: number;
 };
 
 export interface ISignUpPersistor<P> {
@@ -146,6 +151,19 @@ export interface IMeRoutePersistor<S> {
   ) => Promise<S extends { email: string } ? S : null>;
 }
 
+export interface IVerifyEmailPersistor {
+  errors: {
+    EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string;
+  };
+
+  isEmailEligibleForVerification: (email: string) => Promise<boolean>;
+
+  sendVerificationEmail: (input: {
+    email: string;
+    verificationPath: string;
+  }) => Promise<void>;
+}
+
 interface IRouteGenerator<P, Q, R, S> {
   createSignUpRoute: (
     signUpPersistor: ISignUpPersistor<P>
@@ -159,6 +177,9 @@ interface IRouteGenerator<P, Q, R, S> {
     resetPasswordPersistor: IResetPasswordPersistor
   ) => ExpressApplication;
   createMeRoute: (meRoutePersistor: IMeRoutePersistor<S>) => ExpressApplication;
+  createVerifyEmailRoute: (
+    verifyEmailPersistor: IVerifyEmailPersistor
+  ) => ExpressApplication;
 }
 
 interface IRouteMiddlewares {
@@ -180,6 +201,8 @@ const config: TConfig = {
   TOKEN_SECRET: process.env['TOKEN_SECRET'] || '',
   ACCESS_TOKEN_AGE: Number(process.env['ACCESS_TOKEN_AGE']) || 60,
   REFRESH_TOKEN_AGE: Number(process.env['REFRESH_TOKEN_AGE']) || 3600,
+  EMAIL_VERIFICATION_TOKEN_AGE:
+    Number(process.env['EMAIL_VERIFICATION_TOKEN_AGE']) || 60,
 };
 
 export class RouteGenerator<P, Q, R, S>
@@ -618,5 +641,61 @@ export class RouteGenerator<P, Q, R, S>
         });
       }
     );
+  }
+
+  createVerifyEmailRoute: (
+    verifyEmailPersistor: IVerifyEmailPersistor
+  ) => ExpressApplication = (verifyEmailPersistor) => {
+    return this.app.post(
+      `${config.BASE_PATH}/verify-email`,
+      async (req, res, next) => {
+        // verify that email is coming on the body
+        const email = req.body.email;
+
+        if (typeof email !== 'string') {
+          res.status(400).json({
+            message: 'Email invalid or not sent from the client',
+          });
+          return;
+        }
+
+        // validate if email is eligible for verification
+        const isEligibleForVerification =
+          await verifyEmailPersistor.isEmailEligibleForVerification(email);
+
+        if (!isEligibleForVerification) {
+          res.status(400).json({
+            message:
+              verifyEmailPersistor.errors.EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION ||
+              'Email is already verified',
+          });
+          return;
+        }
+
+        const path = this.generateEmailVerificationPath(email);
+
+        await verifyEmailPersistor.sendVerificationEmail({
+          email,
+          verificationPath: path,
+        });
+
+        res.status(200).json({
+          message: 'Verification email sent successfully',
+        });
+      }
+    );
+  };
+
+  private generateEmailVerificationPath(email: string): string {
+    const tokens = generateTokens(
+      { email },
+      {
+        ACCESS_TOKEN_AGE: config.EMAIL_VERIFICATION_TOKEN_AGE,
+        REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
+        tokenSecret: config.TOKEN_SECRET,
+      }
+    );
+
+    return `${config.BASE_PATH}/verify-email?token=${tokens.accessToken}`;
   }
 }
