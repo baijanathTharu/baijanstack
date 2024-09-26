@@ -9,7 +9,7 @@ This library generates routes for authentication.
 1. Install the dependency.
 
 ```bash
-npm install @baijanstack/express-auth@0.0.0-alpha.14
+npm install @baijanstack/express-auth@0.0.0-alpha.20
 ```
 
 ## Description
