@@ -62,10 +62,8 @@ Below is an example of how to use this library.
 
 ```javascript
 import express from 'express';
-import { MemoryStorage, RedisStorage, SessionManager } from '@baijanstack/express-auth';
-import { createTokenVerificationMiddleware } from '@baijanstack/express-auth';
+import { MemoryStorage, RedisStorage, SessionManager , createTokenVerificationMiddleware } from '@baijanstack/express-auth';
 
-// Create an Express app
 const app = express();
 
 // Choose the storage type (e.g., memory storage)
@@ -79,8 +77,8 @@ const storage = new MemoryStorage();
 
 const session = new SessionManager(storage);
 
-// Use the provided middleware in the app
-const tokenVerificationMiddleware = createTokenVerificationMiddleware(session);
-app.use(tokenVerificationMiddleware); //  Verifies user tokens and user device .
+app.use( createTokenVerificationMiddleware(session)); //  Verifies user tokens and user device .
+
+const routeGenerator = new RouteGenerator(app,session);
 
 ```
