@@ -29,8 +29,12 @@ export const createTokenVerificationMiddleware = (
         refreshToken,
         deviceInfo
       );
+      
 
       if (!isValidDevice) {
+        res.clearCookie('x-refresh-token');
+        res.clearCookie('x-access-token');
+
         return res
           .status(401)
           .send('Unauthorized: Invalid device or compromised token.');
