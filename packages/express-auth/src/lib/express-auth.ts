@@ -12,11 +12,13 @@ import {
 } from 'express';
 import {
   comparePassword,
+  extractDeviceIdentifier,
   generateTokens,
   hashPassword,
   setCookies,
   verifyToken,
 } from '../utils';
+import { SessionManager } from '../session-storage/session';
 
 export type TConfig = {
   /**
@@ -208,7 +210,10 @@ const config: TConfig = {
 export class RouteGenerator<P, Q, R, S>
   implements IRouteGenerator<P, Q, R, S>, IRouteMiddlewares
 {
-  constructor(private app: ExpressApplication) {}
+  constructor(
+    private app: ExpressApplication,
+    private sessionManager: SessionManager
+  ) {}
 
   createSignUpRoute(signUpPersistor: ISignUpPersistor<P>) {
     return this.app.post(`${config.BASE_PATH}/signup`, async (req, res) => {
@@ -273,6 +278,10 @@ export class RouteGenerator<P, Q, R, S>
         ACCESS_TOKEN_AGE: config.ACCESS_TOKEN_AGE,
         REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
       });
+
+      const deviceInfo = extractDeviceIdentifier(req);
+
+      this.sessionManager.storeSession(tokens.refreshToken, deviceInfo);
 
       setCookies({
         res,

@@ -5,7 +5,16 @@ export {
   ILogoutPersistor,
   IRefreshPersistor,
   IResetPasswordPersistor,
-  TConfig,
   IMeRoutePersistor,
   IVerifyEmailPersistor,
+  TConfig,
 } from './lib/express-auth';
+
+export {
+  ISessionManager,
+  IStorageManager,
+  MemoryStorage,
+  RedisStorage,
+  SessionManager,
+  createTokenVerificationMiddleware,
+} from './session-storage/index';

@@ -56,3 +56,31 @@ Below is an example of how to use this library.
 [Sample Auth Example](https://github.com/baijanathTharu/sample-auth-example)
 
 [Repo Link](https://github.com/baijanathTharu/baijanstack/tree/main/packages/express-auth)
+
+
+## how to use Session Manager to store session and track device info
+
+```javascript
+import express from 'express';
+import { MemoryStorage, RedisStorage, SessionManager } from '@baijanstack/express-auth';
+import { createTokenVerificationMiddleware } from '@baijanstack/express-auth';
+
+// Create an Express app
+const app = express();
+
+// Choose the storage type (e.g., memory storage)
+const storage = new MemoryStorage(); 
+
+/**
+ * If you want to you redis for storage 
+ * const storage = new RedisStorage("redis:localhost:6379");
+ **/
+
+
+const session = new SessionManager(storage);
+
+// Use the provided middleware in the app
+const tokenVerificationMiddleware = createTokenVerificationMiddleware(session);
+app.use(tokenVerificationMiddleware); //  Verifies user tokens and user device .
+
+```

@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { compare, genSalt, hash } from 'bcryptjs';
 import { sign, verify } from 'jsonwebtoken';
 
@@ -116,4 +116,14 @@ export function getTokenValueCookie(cookie: string, cookieName: string) {
   const splitted = cookie.split(`${cookieName}=`)[1]?.split(';');
 
   return splitted?.length ? splitted[0] : '';
+}
+
+export function extractDeviceIdentifier(req: Request): string {
+  const userAgent = req.headers['user-agent'] || '';
+  const acceptLanguage = req.headers['accept-language'] || '';
+  const deviceIdFromClient = req.headers['x-device-id'] || ''; // This is the UUID from the client
+  
+  // Combine the User-Agent, Accept-Language, and client-provided device ID
+  const deviceInfo = `${userAgent}-${acceptLanguage}-${deviceIdFromClient}`;
+  return deviceInfo;
 }
