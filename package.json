@@ -52,6 +52,7 @@
     "jest-environment-node": "^29.4.1",
     "nx": "16.5.0",
     "prettier": "^2.6.2",
+    "prisma": "^5.20.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.1.0",
     "ts-node": "10.9.1",
