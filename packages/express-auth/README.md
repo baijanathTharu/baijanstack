@@ -57,28 +57,30 @@ Below is an example of how to use this library.
 
 [Repo Link](https://github.com/baijanathTharu/baijanstack/tree/main/packages/express-auth)
 
-
 ## how to use Session Manager to store session and track device info
 
 ```javascript
 import express from 'express';
-import { MemoryStorage, RedisStorage, SessionManager , createTokenVerificationMiddleware } from '@baijanstack/express-auth';
+import NodemailerEmailService from '../services/emailService';
+import { MemoryStorage, RedisStorage, EmailSender, SessionManager, EmailServiceManager, createTokenVerificationMiddleware } from '@baijanstack/express-auth';
 
 const app = express();
 
 // Choose the storage type (e.g., memory storage)
-const storage = new MemoryStorage(); 
+const storage = new MemoryStorage();
 
 /**
- * If you want to you redis for storage 
+ * If you want to you redis for storage
  * const storage = new RedisStorage("redis:localhost:6379");
  **/
 
+const myEmailService = new NodemailerEmailService(); // user creates email service using any service like nodemailer, ses , sendgrid
+
+EmailServiceManager.registerEmailService(myEmailService);
 
 const session = new SessionManager(storage);
 
-app.use( createTokenVerificationMiddleware(session)); //  Verifies user tokens and user device .
+app.use(createTokenVerificationMiddleware(session)); //  Verifies user tokens and user device .
 
-const routeGenerator = new RouteGenerator(app,session);
-
+const routeGenerator = new RouteGenerator(app, session);
 ```

@@ -281,7 +281,11 @@ export class RouteGenerator<P, Q, R, S>
 
       const deviceInfo = extractDeviceIdentifier(req);
 
-      this.sessionManager.storeSession(tokens.refreshToken, deviceInfo);
+      this.sessionManager.storeSession(
+        tokens.refreshToken,
+        req.body.email,
+        deviceInfo
+      );
 
       setCookies({
         res,

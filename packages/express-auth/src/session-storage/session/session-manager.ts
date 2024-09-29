@@ -9,9 +9,14 @@ export class SessionManager implements ISessionManager {
   }
 
   // Use the storage manager to store a token
-  async storeSession(refreshToken: string, deviceInfo: string): Promise<void> {
+  async storeSession(
+    refreshToken: string,
+    userEmail: string,
+    deviceInfo: string
+  ): Promise<void> {
     const key = `${refreshToken}`;
-    await this.storage.set(key, deviceInfo);
+    const value = `${userEmail}:${deviceInfo}`;
+    await this.storage.set(key, value);
   }
 
   // Use the storage manager to retrieve a token
@@ -30,10 +35,20 @@ export class SessionManager implements ISessionManager {
     refreshToken: string,
     deviceInfo: string
   ): Promise<boolean> {
-    const deviceInfoRes = await this.getSession(refreshToken);
-    if (!deviceInfoRes) {
+    const value = await this.getSession(refreshToken);
+    if (!value) {
       return false;
     }
+
+    const deviceInfoRes = value.split(':')[1];
     return deviceInfoRes === deviceInfo;
+  }
+  async getEmailFromSession(refreshToken: string): Promise<string | null> {
+    const value = await this.getSession(refreshToken);
+    if (!value) {
+      return null;
+    }
+    const userEmail = value.split(':')[0];
+    return userEmail;
   }
 }

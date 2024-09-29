@@ -1,7 +1,7 @@
-// sessionMiddleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { extractDeviceIdentifier } from '../../utils';
 import { ISessionManager } from '../interfaces';
+import { EmailServiceManager } from '../email/email-manager';
 
 // Middleware factory function
 export const createTokenVerificationMiddleware = (
@@ -29,12 +29,22 @@ export const createTokenVerificationMiddleware = (
         refreshToken,
         deviceInfo
       );
-      
+      const userEmail = await sessionManager.getEmailFromSession(refreshToken);
 
       if (!isValidDevice) {
+        const emailService = EmailServiceManager.getEmailService();
+
+        if (emailService && userEmail) {
+          // email will be sent in background
+          emailService.sendEmail(
+            userEmail,
+            'Unauthorized Access Attempt',
+            'Someone tried to access your account from an unauthorized device. You have been logged out for security.'
+          );
+        }
+
         res.clearCookie('x-refresh-token');
         res.clearCookie('x-access-token');
-
         return res
           .status(401)
           .send('Unauthorized: Invalid device or compromised token.');

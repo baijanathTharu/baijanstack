@@ -17,4 +17,6 @@ export {
   RedisStorage,
   SessionManager,
   createTokenVerificationMiddleware,
+  EmailServiceManager,
+  IEmailService
 } from './session-storage/index';
