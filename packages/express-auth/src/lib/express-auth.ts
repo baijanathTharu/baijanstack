@@ -19,6 +19,8 @@ import {
   verifyToken,
 } from '../utils';
 import { SessionManager } from '../session-storage/session';
+import { MemoryStorage } from '../session-storage';
+import { INotifyService } from '../session-storage/interfaces';
 
 export type TConfig = {
   /**
@@ -195,6 +197,11 @@ interface IRouteMiddlewares {
     res: Response,
     next: NextFunction
   ) => void;
+  validateSessionDeviceInfo: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => void;
 }
 
 const config: TConfig = {
@@ -212,8 +219,13 @@ export class RouteGenerator<P, Q, R, S>
 {
   constructor(
     private app: ExpressApplication,
-    private sessionManager: SessionManager
-  ) {}
+    private notifyService: INotifyService,
+    private sessionManager?: SessionManager
+  ) {
+    if (!this.sessionManager) {
+      this.sessionManager = new SessionManager(new MemoryStorage());
+    }
+  }
 
   createSignUpRoute(signUpPersistor: ISignUpPersistor<P>) {
     return this.app.post(`${config.BASE_PATH}/signup`, async (req, res) => {
@@ -281,11 +293,13 @@ export class RouteGenerator<P, Q, R, S>
 
       const deviceInfo = extractDeviceIdentifier(req);
 
-      this.sessionManager.storeSession(
-        tokens.refreshToken,
-        req.body.email,
-        deviceInfo
-      );
+      if (this.sessionManager) {
+        this.sessionManager.storeSession(
+          tokens.refreshToken,
+          req.body.email,
+          deviceInfo
+        );
+      }
 
       setCookies({
         res,
@@ -314,6 +328,7 @@ export class RouteGenerator<P, Q, R, S>
       `${config.BASE_PATH}/logout`,
       this.validateAccessToken,
       this.validateRefreshToken,
+
       async (req, res) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
@@ -427,10 +442,62 @@ export class RouteGenerator<P, Q, R, S>
     next();
   }
 
+  async validateSessionDeviceInfo(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+
+    const refreshToken = req.cookies['x-refresh-token'];
+    const deviceInfo = extractDeviceIdentifier(req);
+
+    if (!refreshToken) {
+      return res.status(401).send('Unauthorized: Missing refresh token.');
+    }
+
+    if (!deviceInfo) {
+      return res.status(401).send('Unauthorized: Missing device info');
+    }
+
+    try {
+      if (this.sessionManager) {
+        const session = await this.sessionManager.getSession(refreshToken);
+
+        if (!session) {
+          return res.status(401).send('Unauthorized: Session not found');
+        }
+
+        const isValidDevice = await this.sessionManager.verifyDevice(
+          refreshToken,
+          deviceInfo
+        );
+
+        if (!isValidDevice) {
+          const userEmail = await this.sessionManager.getEmailFromSession(
+            refreshToken
+          );
+          if (userEmail) {
+            this.notifyService.notify('TOKEN_STOLEN', userEmail);
+          }
+          await this.sessionManager.deleteSession(refreshToken);
+          return res.status(401).send('Unauthorized device.');
+        }
+      }
+
+      next();
+    } catch (error) {
+      console.error(error);
+      return res
+        .status(500)
+        .send('Internal server error during authentication');
+    }
+  }
+
   createRefreshRoute(refreshPersistor: IRefreshPersistor<R>) {
     return this.app.post(
       `${config.BASE_PATH}/refresh`,
       this.validateRefreshToken,
+      this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
@@ -524,6 +591,7 @@ export class RouteGenerator<P, Q, R, S>
     return this.app.post(
       `${config.BASE_PATH}/reset`,
       this.validateAccessToken,
+      this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
         // body has oldPassword and newPassword
         const oldPassword = req.body.oldPassword;
@@ -620,6 +688,7 @@ export class RouteGenerator<P, Q, R, S>
     return this.app.get(
       `${config.BASE_PATH}/me`,
       this.validateAccessToken,
+      this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error

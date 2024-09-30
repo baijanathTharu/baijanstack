@@ -13,10 +13,7 @@ export {
 export {
   ISessionManager,
   IStorageManager,
+  INotifyService,
   MemoryStorage,
-  RedisStorage,
   SessionManager,
-  createTokenVerificationMiddleware,
-  EmailServiceManager,
-  IEmailService
 } from './session-storage/index';

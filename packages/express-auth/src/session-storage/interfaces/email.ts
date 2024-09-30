@@ -1,8 +1,3 @@
-export interface IEmailService {
-  sendEmail(
-    to: string,
-    subject: string,
-    text: string,
-    html?: string
-  ): Promise<void>;
+export interface INotifyService {
+  notify(type: 'TOKEN_STOLEN', email: string): Promise<void>;
 }
