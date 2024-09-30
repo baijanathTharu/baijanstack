@@ -7,7 +7,7 @@ config({
 import express, { NextFunction, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 
-import { RouteGenerator, TConfig } from '../../index';
+import { RouteGenerator } from '../../index';
 import {
   LoginPersistor,
   LogoutPersistor,
@@ -17,6 +17,7 @@ import {
   SignUpPersistor,
   VerifyEmailPersistor,
 } from '../app/auth';
+import { MyNotifyService } from './email-service';
 
 const PORT = 4000;
 
@@ -31,7 +32,12 @@ async function main() {
     res.send('hello from server');
   });
 
-  const routeGenerator = new RouteGenerator(app);
+  const notifyService = new MyNotifyService();
+
+  const routeGenerator = new RouteGenerator(app, notifyService);
+
+  // const validateSessionDeviceInfoMiddleware =
+  //   routeGenerator.validateSessionDeviceInfo.bind(routeGenerator);
 
   // sign up route
   const signUpPersistor = new SignUpPersistor();
