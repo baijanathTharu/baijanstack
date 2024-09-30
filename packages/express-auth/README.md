@@ -65,7 +65,7 @@ Below is an example of how to use this library.
 
 import express from 'express';
 import { MyNotifyService } from '../services/email-service';
-import { MemoryStorage, EmailSender, SessionManager } from '@baijanstack/express-auth';
+import { RouteGenerator  } from '@baijanstack/express-auth';
 
 const app = express();
 
