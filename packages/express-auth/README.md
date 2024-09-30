@@ -60,27 +60,44 @@ Below is an example of how to use this library.
 ## how to use Session Manager to store session and track device info
 
 ```javascript
+
+##index.js
+
 import express from 'express';
-import NodemailerEmailService from '../services/emailService';
-import { MemoryStorage, RedisStorage, EmailSender, SessionManager, EmailServiceManager, createTokenVerificationMiddleware } from '@baijanstack/express-auth';
+import { MyNotifyService } from '../services/email-service';
+import { MemoryStorage, EmailSender, SessionManager } from '@baijanstack/express-auth';
 
 const app = express();
 
-// Choose the storage type (e.g., memory storage)
-const storage = new MemoryStorage();
+const notifyService = new MyNotifyService();
 
-/**
- * If you want to you redis for storage
- * const storage = new RedisStorage("redis:localhost:6379");
- **/
+const routeGenerator = new RouteGenerator(app, notifyService);
 
-const myEmailService = new NodemailerEmailService(); // user creates email service using any service like nodemailer, ses , sendgrid
+const validateSessionDeviceMiddleware = routeGenerator.validateSessionDeviceInfo.bind(routeGenerator);
 
-EmailServiceManager.registerEmailService(myEmailService);
+// sign up route
+const signUpPersistor = new SignUpPersistor();
+routeGenerator.createSignUpRoute(signUpPersistor);
 
-const session = new SessionManager(storage);
+// login route
+const loginPersistor = new LoginPersistor();
+routeGenerator.createLoginRoute(loginPersistor);
 
-app.use(createTokenVerificationMiddleware(session)); //  Verifies user tokens and user device .
+app.get('/v1/post/:postId', validateSessionDeviceMiddleware, (req, res) => {
+  //
+});
 
-const routeGenerator = new RouteGenerator(app, session);
+
+## services/email-service
+
+import { INotifyService } from '@baijanstack/express-auth';
+
+export class MyNotifyService implements INotifyService {
+  async notify(type: 'TOKEN_STOLEN', email: string): Promise<void> {
+    if (type === 'TOKEN_STOLEN') {
+      console.log(`Notifying ... ${email}`);
+    }
+  }
+}
+
 ```
