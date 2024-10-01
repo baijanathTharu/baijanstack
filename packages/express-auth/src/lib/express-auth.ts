@@ -447,7 +447,6 @@ export class RouteGenerator<P, Q, R, S>
     res: Response,
     next: NextFunction
   ) {
-
     const refreshToken = req.cookies['x-refresh-token'];
     const deviceInfo = extractDeviceIdentifier(req);
 
@@ -485,6 +484,7 @@ export class RouteGenerator<P, Q, R, S>
       }
 
       next();
+      return;
     } catch (error) {
       console.error(error);
       return res
