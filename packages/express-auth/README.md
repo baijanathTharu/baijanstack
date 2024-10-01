@@ -56,3 +56,48 @@ Below is an example of how to use this library.
 [Sample Auth Example](https://github.com/baijanathTharu/sample-auth-example)
 
 [Repo Link](https://github.com/baijanathTharu/baijanstack/tree/main/packages/express-auth)
+
+## how to use Session Manager to store session and track device info
+
+```javascript
+
+##index.js
+
+import express from 'express';
+import { MyNotifyService } from '../services/email-service';
+import { RouteGenerator  } from '@baijanstack/express-auth';
+
+const app = express();
+
+const notifyService = new MyNotifyService();
+
+const routeGenerator = new RouteGenerator(app, notifyService);
+
+const validateSessionDeviceMiddleware = routeGenerator.validateSessionDeviceInfo.bind(routeGenerator);
+
+// sign up route
+const signUpPersistor = new SignUpPersistor();
+routeGenerator.createSignUpRoute(signUpPersistor);
+
+// login route
+const loginPersistor = new LoginPersistor();
+routeGenerator.createLoginRoute(loginPersistor);
+
+app.get('/v1/post/:postId', validateSessionDeviceMiddleware, (req, res) => {
+  //
+});
+
+
+## services/email-service
+
+import { INotifyService } from '@baijanstack/express-auth';
+
+export class MyNotifyService implements INotifyService {
+  async notify(type: 'TOKEN_STOLEN', email: string): Promise<void> {
+    if (type === 'TOKEN_STOLEN') {
+      console.log(`Notifying ... ${email}`);
+    }
+  }
+}
+
+```

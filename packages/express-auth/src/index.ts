@@ -5,7 +5,15 @@ export {
   ILogoutPersistor,
   IRefreshPersistor,
   IResetPasswordPersistor,
-  TConfig,
   IMeRoutePersistor,
   IVerifyEmailPersistor,
+  TConfig,
 } from './lib/express-auth';
+
+export {
+  ISessionManager,
+  IStorageManager,
+  INotifyService,
+  MemoryStorage,
+  SessionManager,
+} from './session-storage/index';
