@@ -328,6 +328,7 @@ export class RouteGenerator<P, Q, R, S>
       `${config.BASE_PATH}/logout`,
       this.validateAccessToken,
       this.validateRefreshToken,
+      this.validateSessionDeviceInfo.bind(this),
 
       async (req, res) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -364,6 +365,8 @@ export class RouteGenerator<P, Q, R, S>
             },
           ],
         });
+
+        await this.sessionManager?.deleteSession(refreshToken);
 
         res.status(200).json({
           message: 'Logged out successfully!!',
