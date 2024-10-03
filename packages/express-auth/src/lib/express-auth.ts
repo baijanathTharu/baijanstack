@@ -107,6 +107,20 @@ export class RouteGenerator<P, Q, R, S>
   createLoginRoute(logingPersistor: ILoginPersistor<Q>) {
     return this.app.post(`${this.config.BASE_PATH}/login`, async (req, res) => {
       try {
+        if (!req.body.email) {
+          res.status(400).json({
+            message: 'Email is required',
+          });
+          return;
+        }
+
+        if (!req.body.password) {
+          res.status(400).json({
+            message: 'Password is required',
+          });
+          return;
+        }
+
         const user = await logingPersistor.getUserByEmail(req.body.email);
 
         if (!user) {

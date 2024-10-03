@@ -63,7 +63,8 @@ export class LoginPersistor implements ILoginPersistor<TLoginOutput> {
     const user = await users.find((user) => user.email === email);
 
     if (!user) {
-      throw new Error('User not found');
+      console.error('User not found');
+      return null;
     }
 
     return user;
