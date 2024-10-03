@@ -49,6 +49,23 @@ export class RouteGenerator<P, Q, R, S>
       `${this.config.BASE_PATH}/signup`,
       async (req, res) => {
         try {
+          /**
+           * if body does not have email or password, return error
+           */
+          if (!req.body.email) {
+            res.status(400).json({
+              message: 'Email is required',
+            });
+            return;
+          }
+
+          if (!req.body.password) {
+            res.status(400).json({
+              message: 'Password is required',
+            });
+            return;
+          }
+
           const isUserExists = await signUpPersistor.doesUserExists(req.body);
           if (isUserExists) {
             res.status(409).json({

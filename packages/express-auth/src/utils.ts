@@ -122,7 +122,7 @@ export function extractDeviceIdentifier(req: Request): string {
   const userAgent = req.headers['user-agent'] || '';
   const acceptLanguage = req.headers['accept-language'] || '';
   const deviceIdFromClient = req.headers['x-device-id'] || ''; // This is the UUID from the client
-  
+
   // Combine the User-Agent, Accept-Language, and client-provided device ID
   const deviceInfo = `${userAgent}-${acceptLanguage}-${deviceIdFromClient}`;
   return deviceInfo;
