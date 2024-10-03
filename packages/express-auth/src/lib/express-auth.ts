@@ -1,9 +1,3 @@
-import { config as dConfig } from 'dotenv';
-
-dConfig({
-  path: '.env',
-});
-
 import {
   Application as ExpressApplication,
   Request,
@@ -101,12 +95,10 @@ export interface ILoginPersistor<Q> {
 
 export interface ILogoutPersistor {
   /**
-   * Revokes access and refresh tokens
+   * Just to have a non empty interface
+   * You should always return true
    */
-  revokeTokens: (token: {
-    refreshToken: string;
-    accessToken: string;
-  }) => Promise<boolean>;
+  shouldLogout: () => Promise<boolean>;
 }
 
 export interface IRefreshPersistor<R> {
@@ -116,11 +108,6 @@ export interface IRefreshPersistor<R> {
      */
     INVALID_REFRESH_TOKEN?: string;
   };
-
-  /**
-   * Returns true if token is eligible for refresh. The token might be revoked.
-   */
-  isTokenEligibleForRefresh: (token: string) => Promise<boolean>;
 
   /**
    * Returns the payload object that is signed in the access and refresh tokens
@@ -157,13 +144,25 @@ export interface IMeRoutePersistor<S> {
 
 export interface IVerifyEmailPersistor {
   errors: {
+    /**
+     * Message that will be returned if email is not eligible for verification
+     */
     EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string;
   };
 
+  /**
+   * Check the storage to see if user's email is already verified
+   */
   isEmailEligibleForVerification: (email: string) => Promise<boolean>;
 
+  /**
+   * Send verification email to the user
+   */
   sendVerificationEmail: (input: {
     email: string;
+    /**
+     * Path where the user will be redirected after clicking on the verification link
+     */
     verificationPath: string;
   }) => Promise<void>;
 }
@@ -204,22 +203,13 @@ interface IRouteMiddlewares {
   ) => void;
 }
 
-const config: TConfig = {
-  BASE_PATH: process.env['BASE_PATH'] || '/v1/auth',
-  SALT_ROUNDS: Number(process.env['SALT_ROUNDS']) || 10,
-  TOKEN_SECRET: process.env['TOKEN_SECRET'] || '',
-  ACCESS_TOKEN_AGE: Number(process.env['ACCESS_TOKEN_AGE']) || 60,
-  REFRESH_TOKEN_AGE: Number(process.env['REFRESH_TOKEN_AGE']) || 3600,
-  EMAIL_VERIFICATION_TOKEN_AGE:
-    Number(process.env['EMAIL_VERIFICATION_TOKEN_AGE']) || 60,
-};
-
 export class RouteGenerator<P, Q, R, S>
   implements IRouteGenerator<P, Q, R, S>, IRouteMiddlewares
 {
   constructor(
     private app: ExpressApplication,
     private notifyService: INotifyService,
+    private config: TConfig,
     private sessionManager?: SessionManager
   ) {
     if (!this.sessionManager) {
@@ -228,126 +218,88 @@ export class RouteGenerator<P, Q, R, S>
   }
 
   createSignUpRoute(signUpPersistor: ISignUpPersistor<P>) {
-    return this.app.post(`${config.BASE_PATH}/signup`, async (req, res) => {
-      const isUserExists = await signUpPersistor.doesUserExists(req.body);
-      if (isUserExists) {
-        res.status(409).json({
-          message:
-            signUpPersistor.errors.USER_ALREADY_EXISTS_MESSAGE ??
-            'User already exists',
-        });
-        return;
+    return this.app.post(
+      `${this.config.BASE_PATH}/signup`,
+      async (req, res) => {
+        try {
+          const isUserExists = await signUpPersistor.doesUserExists(req.body);
+          if (isUserExists) {
+            res.status(409).json({
+              message:
+                signUpPersistor.errors.USER_ALREADY_EXISTS_MESSAGE ??
+                'User already exists',
+            });
+            return;
+          }
+
+          // !FIXME: password validations can be done here
+          const [_, hashedPasswordStr] = await hashPassword(
+            req.body.password,
+            this.config.SALT_ROUNDS
+          );
+
+          if (!hashedPasswordStr) {
+            res.status(500).json({
+              message: 'Failed to hash the password',
+            });
+            return;
+          }
+
+          await signUpPersistor.saveUser(req.body, hashedPasswordStr);
+
+          res.status(201).json({
+            message: 'User created',
+          });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({
+            message: 'Internal server error',
+          });
+        }
       }
-
-      // !FIXME: password validations can be done here
-      const [_, hashedPasswordStr] = await hashPassword(
-        req.body.password,
-        config.SALT_ROUNDS
-      );
-
-      if (!hashedPasswordStr) {
-        res.status(500).json({
-          message: 'Failed to hash the password',
-        });
-        return;
-      }
-
-      await signUpPersistor.saveUser(req.body, hashedPasswordStr);
-
-      res.status(201).json({
-        message: 'User created',
-      });
-    });
+    );
   }
 
   createLoginRoute(logingPersistor: ILoginPersistor<Q>) {
-    return this.app.post(`${config.BASE_PATH}/login`, async (req, res) => {
-      const user = await logingPersistor.getUserByEmail(req.body.email);
+    return this.app.post(`${this.config.BASE_PATH}/login`, async (req, res) => {
+      try {
+        const user = await logingPersistor.getUserByEmail(req.body.email);
 
-      if (!user) {
-        res.status(409).json({
-          message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
-        });
-        return;
-      }
-
-      const [_, isPasswordMatch] = await comparePassword({
-        password: req.body.password,
-        hashedPassword: user.password,
-      });
-
-      if (!isPasswordMatch) {
-        res.status(409).json({
-          message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
-        });
-        return;
-      }
-
-      const payload = await logingPersistor.getTokenPayload(req.body.email);
-
-      const tokens = generateTokens(payload, {
-        tokenSecret: config.TOKEN_SECRET,
-        ACCESS_TOKEN_AGE: config.ACCESS_TOKEN_AGE,
-        REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
-      });
-
-      const deviceInfo = extractDeviceIdentifier(req);
-
-      if (this.sessionManager) {
-        this.sessionManager.storeSession(
-          tokens.refreshToken,
-          req.body.email,
-          deviceInfo
-        );
-      }
-
-      setCookies({
-        res,
-        cookieData: [
-          {
-            cookieName: 'x-access-token',
-            cookieValue: tokens.accessToken,
-            maxAge: config.ACCESS_TOKEN_AGE * 1000,
-          },
-          {
-            cookieName: 'x-refresh-token',
-            cookieValue: tokens.refreshToken,
-            maxAge: config.REFRESH_TOKEN_AGE * 1000,
-          },
-        ],
-      });
-
-      res.status(200).json({
-        message: 'Logged in successfully!!',
-      });
-    });
-  }
-
-  createLogoutRoute(logoutPersistor: ILogoutPersistor) {
-    return this.app.post(
-      `${config.BASE_PATH}/logout`,
-      this.validateAccessToken,
-      this.validateRefreshToken,
-      this.validateSessionDeviceInfo.bind(this),
-
-      async (req, res) => {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        const accessToken = req['accessToken'];
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        const refreshToken = req['refreshToken'];
-
-        const isRevoked = await logoutPersistor.revokeTokens({
-          refreshToken,
-          accessToken,
-        });
-
-        if (!isRevoked) {
-          res.status(500).json({
-            message: 'Failed to revoke the tokens',
+        if (!user) {
+          res.status(409).json({
+            message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
           });
           return;
+        }
+
+        const [_, isPasswordMatch] = await comparePassword({
+          password: req.body.password,
+          hashedPassword: user.password,
+        });
+
+        if (!isPasswordMatch) {
+          res.status(409).json({
+            message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
+          });
+          return;
+        }
+
+        const payload = await logingPersistor.getTokenPayload(req.body.email);
+
+        const tokens = generateTokens(payload, {
+          tokenSecret: this.config.TOKEN_SECRET,
+          ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
+          REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
+        });
+
+        const deviceInfo = extractDeviceIdentifier(req);
+
+        if (this.sessionManager) {
+          this.sessionManager.storeSession(
+            tokens.refreshToken,
+            req.body.email,
+            deviceInfo
+          );
         }
 
         setCookies({
@@ -355,94 +307,157 @@ export class RouteGenerator<P, Q, R, S>
           cookieData: [
             {
               cookieName: 'x-access-token',
-              cookieValue: '',
-              maxAge: config.ACCESS_TOKEN_AGE * 1000,
+              cookieValue: tokens.accessToken,
+              maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
             },
             {
               cookieName: 'x-refresh-token',
-              cookieValue: '',
-              maxAge: config.REFRESH_TOKEN_AGE * 1000,
+              cookieValue: tokens.refreshToken,
+              maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
             },
           ],
         });
 
-        await this.sessionManager?.deleteSession(refreshToken);
-
         res.status(200).json({
-          message: 'Logged out successfully!!',
+          message: 'Logged in successfully!!',
         });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          message: 'Internal server error',
+        });
+      }
+    });
+  }
+
+  createLogoutRoute(logoutPersistor: ILogoutPersistor) {
+    return this.app.post(
+      `${this.config.BASE_PATH}/logout`,
+      this.validateAccessToken,
+      this.validateRefreshToken,
+      this.validateSessionDeviceInfo.bind(this),
+
+      async (req, res) => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          const refreshToken = req['refreshToken'];
+
+          setCookies({
+            res,
+            cookieData: [
+              {
+                cookieName: 'x-access-token',
+                cookieValue: '',
+                maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+              },
+              {
+                cookieName: 'x-refresh-token',
+                cookieValue: '',
+                maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+              },
+            ],
+          });
+
+          await this.sessionManager?.deleteSession(refreshToken);
+
+          res.status(200).json({
+            message: 'Logged out successfully!!',
+          });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({
+            message: 'Internal server error',
+          });
+        }
       }
     );
   }
 
   validateAccessToken(req: Request, res: Response, next: NextFunction) {
-    const cookies = req.cookies;
-    if (!cookies) {
-      res.status(400).json({
-        message: 'Cookies are not sent from the client',
-      });
-      return;
-    }
-    const token = cookies['x-access-token'];
-    if (!token) {
-      res.status(400).json({
-        message: 'Access token not found in the cookie',
-      });
-      return;
-    }
+    try {
+      const cookies = req.cookies;
+      if (!cookies) {
+        res.status(400).json({
+          message: 'Cookies are not sent from the client',
+        });
+        return;
+      }
+      const token = cookies['x-access-token'];
+      if (!token) {
+        res.status(400).json({
+          message: 'Access token not found in the cookie',
+        });
+        return;
+      }
 
-    // check if token is valid or not
-    const isTokenValid = verifyToken({
-      token,
-      tokenSecret: config.TOKEN_SECRET,
-    });
-    if (!isTokenValid) {
-      res.status(400).json({
-        message: 'Access Token is invalid',
+      // check if token is valid or not
+      const isTokenValid = verifyToken({
+        token,
+        tokenSecret: this.config.TOKEN_SECRET,
+      });
+      if (!isTokenValid) {
+        res.status(400).json({
+          message: 'Access Token is invalid',
+        });
+        return;
+      }
+
+      // token is valid, call the next middleware
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      req['accessToken'] = token;
+      next();
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: 'Internal server error',
       });
       return;
     }
-
-    // token is valid, call the next middleware
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    req['accessToken'] = token;
-    next();
   }
 
   validateRefreshToken(req: Request, res: Response, next: NextFunction) {
-    const cookies = req.cookies;
-    if (!cookies) {
-      res.status(400).json({
-        message: 'Cookies are not sent from the client',
-      });
-      return;
-    }
-    const token = cookies['x-refresh-token'];
-    if (!token) {
-      res.status(400).json({
-        message: 'Refresh Token not found in the cookie',
-      });
-      return;
-    }
+    try {
+      const cookies = req.cookies;
+      if (!cookies) {
+        res.status(400).json({
+          message: 'Cookies are not sent from the client',
+        });
+        return;
+      }
+      const token = cookies['x-refresh-token'];
+      if (!token) {
+        res.status(400).json({
+          message: 'Refresh Token not found in the cookie',
+        });
+        return;
+      }
 
-    // check if token is valid or not
-    const isTokenValid = verifyToken({
-      token,
-      tokenSecret: config.TOKEN_SECRET,
-    });
-    if (!isTokenValid) {
-      res.status(400).json({
-        message: 'Token is invalid',
+      // check if token is valid or not
+      const isTokenValid = verifyToken({
+        token,
+        tokenSecret: this.config.TOKEN_SECRET,
+      });
+      if (!isTokenValid) {
+        res.status(400).json({
+          message: 'Token is invalid',
+        });
+        return;
+      }
+
+      // token is valid, call the next middleware
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      req['refreshToken'] = token;
+      next();
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: 'Internal server error',
       });
       return;
     }
-
-    // token is valid, call the next middleware
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    req['refreshToken'] = token;
-    next();
   }
 
   async validateSessionDeviceInfo(
@@ -498,232 +513,229 @@ export class RouteGenerator<P, Q, R, S>
 
   createRefreshRoute(refreshPersistor: IRefreshPersistor<R>) {
     return this.app.post(
-      `${config.BASE_PATH}/refresh`,
+      `${this.config.BASE_PATH}/refresh`,
       this.validateRefreshToken,
       this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        const refreshToken = req['refreshToken'] as string;
+        try {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          const refreshToken = req['refreshToken'] as string;
 
-        const isEligible = await refreshPersistor.isTokenEligibleForRefresh(
-          refreshToken
-        );
-
-        if (!isEligible) {
-          res.status(400).json({
-            message:
-              refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
-              'Refresh token is not eligible for refresh. It might be revoked.',
+          // validate the refreshToken
+          const decodedToken = await verifyToken({
+            token: refreshToken,
+            tokenSecret: this.config.TOKEN_SECRET,
           });
-          return;
-        }
 
-        const isEligibleForRefresh =
-          await refreshPersistor.isTokenEligibleForRefresh(refreshToken);
+          if (!decodedToken) {
+            res.status(400).json({
+              message:
+                refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
+                'Refresh token could not be verified',
+            });
+            return;
+          }
 
-        if (!isEligibleForRefresh) {
-          res.status(400).json({
-            message:
-              refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
-              'Refresh token is not eligible for refresh. It might be revoked.',
+          /**
+           * Generate new access token and refresh token and set on the cookie
+           */
+          if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
+            res.status(400).json({
+              message:
+                refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
+                'Decoded token is not an object with email property',
+            });
+            return;
+          }
+          const payload = await refreshPersistor.getTokenPayload(
+            decodedToken['email']
+          );
+
+          const tokens = generateTokens(payload, {
+            tokenSecret: this.config.TOKEN_SECRET,
+            ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
+            REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
           });
-          return;
-        }
 
-        // validate the refreshToken
-        const decodedToken = await verifyToken({
-          token: refreshToken,
-          tokenSecret: config.TOKEN_SECRET,
-        });
-
-        if (!decodedToken) {
-          res.status(400).json({
-            message:
-              refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
-              'Refresh token could not be verified',
+          setCookies({
+            res,
+            cookieData: [
+              {
+                cookieName: 'x-access-token',
+                cookieValue: tokens.accessToken,
+                maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+              },
+              {
+                cookieName: 'x-refresh-token',
+                cookieValue: tokens.refreshToken,
+                maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+              },
+            ],
           });
-          return;
-        }
 
-        /**
-         * Generate new access token and refresh token and set on the cookie
-         */
-        if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
-          res.status(400).json({
-            message:
-              refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
-              'Decoded token is not an object with email property',
+          res.status(200).json({
+            message: 'Refreshed token successfully!!',
           });
-          return;
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({
+            message: 'Internal server error',
+          });
         }
-        const payload = await refreshPersistor.getTokenPayload(
-          decodedToken['email']
-        );
-
-        const tokens = generateTokens(payload, {
-          tokenSecret: config.TOKEN_SECRET,
-          ACCESS_TOKEN_AGE: config.ACCESS_TOKEN_AGE,
-          REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
-        });
-
-        setCookies({
-          res,
-          cookieData: [
-            {
-              cookieName: 'x-access-token',
-              cookieValue: tokens.accessToken,
-              maxAge: config.ACCESS_TOKEN_AGE * 1000,
-            },
-            {
-              cookieName: 'x-refresh-token',
-              cookieValue: tokens.refreshToken,
-              maxAge: config.REFRESH_TOKEN_AGE * 1000,
-            },
-          ],
-        });
-
-        res.status(200).json({
-          message: 'Refreshed token successfully!!',
-        });
       }
     );
   }
 
   createResetPasswordRoute(resetPasswordPersistor: IResetPasswordPersistor) {
     return this.app.post(
-      `${config.BASE_PATH}/reset`,
+      `${this.config.BASE_PATH}/reset`,
       this.validateAccessToken,
       this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
-        // body has oldPassword and newPassword
-        const oldPassword = req.body.oldPassword;
-        const newPassword = req.body.newPassword;
+        try {
+          const oldPassword = req.body.oldPassword;
+          const newPassword = req.body.newPassword;
 
-        /**
-         * Get the email from the access token
-         */
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        const accessToken = req['accessToken'];
-        const decodedToken = await verifyToken({
-          token: accessToken,
-          tokenSecret: config.TOKEN_SECRET,
-        });
+          /**
+           * Get the email from the access token
+           */
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          const accessToken = req['accessToken'];
+          const decodedToken = await verifyToken({
+            token: accessToken,
+            tokenSecret: this.config.TOKEN_SECRET,
+          });
 
-        if (!decodedToken) {
+          if (!decodedToken) {
+            res.status(500).json({
+              message: 'Access token could not be verified',
+            });
+            return;
+          }
+
+          /**
+           * Generate new access token and refresh token and set on the cookie
+           */
+          if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
+            res.status(400).json({
+              message: 'Decoded token is not an object with email property',
+            });
+            return;
+          }
+
+          const email = decodedToken['email'];
+
+          const oldPasswordHash =
+            await resetPasswordPersistor.getOldPasswordHash(email);
+
+          // validating the old password
+          const [, isOldPasswordValid] = await comparePassword({
+            password: oldPassword,
+            hashedPassword: oldPasswordHash,
+          });
+          if (!isOldPasswordValid) {
+            res.status(403).json({
+              message: 'Old password or username is not valid',
+            });
+            return;
+          }
+
+          // hash the new password and save in the database
+          const [, hashedPassword] = await hashPassword(
+            newPassword,
+            this.config.SALT_ROUNDS
+          );
+
+          if (!hashedPassword) {
+            res.status(500).json({
+              message: 'Password could not be hashed',
+            });
+            return;
+          }
+
+          await resetPasswordPersistor.saveHashedPassword(
+            email,
+            hashedPassword
+          );
+
+          /**
+           * logout
+           */
+          setCookies({
+            res,
+            cookieData: [
+              {
+                cookieName: 'x-access-token',
+                cookieValue: '',
+                maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+              },
+              {
+                cookieName: 'x-refresh-token',
+                cookieValue: '',
+                maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+              },
+            ],
+          });
+
+          res.status(200).json({
+            message: 'Password has been reset sucessfully! Please login again',
+          });
+        } catch (error) {
+          console.error(error);
           res.status(500).json({
-            message: 'Access token could not be verified',
+            message: 'Internal server error',
           });
-          return;
         }
-
-        /**
-         * Generate new access token and refresh token and set on the cookie
-         */
-        if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
-          res.status(400).json({
-            message: 'Decoded token is not an object with email property',
-          });
-          return;
-        }
-
-        const email = decodedToken['email'];
-
-        const oldPasswordHash = await resetPasswordPersistor.getOldPasswordHash(
-          email
-        );
-
-        // validating the old password
-        const [, isOldPasswordValid] = await comparePassword({
-          password: oldPassword,
-          hashedPassword: oldPasswordHash,
-        });
-        if (!isOldPasswordValid) {
-          res.status(403).json({
-            message: 'Old password or username is not valid',
-          });
-          return;
-        }
-
-        // hash the new password and save in the database
-        const [, hashedPassword] = await hashPassword(
-          newPassword,
-          config.SALT_ROUNDS
-        );
-
-        if (!hashedPassword) {
-          res.status(500).json({
-            message: 'Password could not be hashed',
-          });
-          return;
-        }
-
-        await resetPasswordPersistor.saveHashedPassword(email, hashedPassword);
-
-        /**
-         * logout
-         */
-        setCookies({
-          res,
-          cookieData: [
-            {
-              cookieName: 'x-access-token',
-              cookieValue: '',
-              maxAge: config.ACCESS_TOKEN_AGE * 1000,
-            },
-            {
-              cookieName: 'x-refresh-token',
-              cookieValue: '',
-              maxAge: config.REFRESH_TOKEN_AGE * 1000,
-            },
-          ],
-        });
-
-        res.status(200).json({
-          message: 'Password has been reset sucessfully! Please login again',
-        });
       }
     );
   }
 
   createMeRoute(meRoutePersistor: IMeRoutePersistor<S>) {
     return this.app.get(
-      `${config.BASE_PATH}/me`,
+      `${this.config.BASE_PATH}/me`,
       this.validateAccessToken,
       this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        const accessToken = req.accessToken;
+        try {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          const accessToken = req.accessToken;
 
-        const decodedToken = verifyToken({
-          token: accessToken,
-          tokenSecret: config.TOKEN_SECRET,
-        });
+          const decodedToken = verifyToken({
+            token: accessToken,
+            tokenSecret: this.config.TOKEN_SECRET,
+          });
 
-        if (!decodedToken) {
+          if (!decodedToken) {
+            res.status(500).json({
+              message: 'Access token could not be verified',
+            });
+            return;
+          }
+
+          if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
+            res.status(400).json({
+              message: 'Decoded token is not an object with email property',
+            });
+            return;
+          }
+
+          const email = decodedToken['email'];
+
+          const meData = await meRoutePersistor.getMeByEmail(email);
+
+          res.status(200).json({
+            data: decodedToken,
+            me: meData,
+          });
+        } catch (error) {
+          console.error(error);
           res.status(500).json({
-            message: 'Access token could not be verified',
+            message: 'Internal server error',
           });
-          return;
         }
-
-        if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
-          res.status(400).json({
-            message: 'Decoded token is not an object with email property',
-          });
-          return;
-        }
-
-        const email = decodedToken['email'];
-
-        const meData = await meRoutePersistor.getMeByEmail(email);
-
-        res.status(200).json({
-          data: decodedToken,
-          me: meData,
-        });
       }
     );
   }
@@ -732,41 +744,48 @@ export class RouteGenerator<P, Q, R, S>
     verifyEmailPersistor: IVerifyEmailPersistor
   ) => ExpressApplication = (verifyEmailPersistor) => {
     return this.app.post(
-      `${config.BASE_PATH}/verify-email`,
+      `${this.config.BASE_PATH}/verify-email`,
       async (req, res, next) => {
-        // verify that email is coming on the body
-        const email = req.body.email;
+        try {
+          const email = req.body.email;
 
-        if (typeof email !== 'string') {
-          res.status(400).json({
-            message: 'Email invalid or not sent from the client',
+          if (typeof email !== 'string') {
+            res.status(400).json({
+              message: 'Email invalid or not sent from the client',
+            });
+            return;
+          }
+
+          // validate if email is eligible for verification
+          const isEligibleForVerification =
+            await verifyEmailPersistor.isEmailEligibleForVerification(email);
+
+          if (!isEligibleForVerification) {
+            res.status(400).json({
+              message:
+                verifyEmailPersistor.errors
+                  .EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION ||
+                'Email is already verified',
+            });
+            return;
+          }
+
+          const path = this.generateEmailVerificationPath(email);
+
+          await verifyEmailPersistor.sendVerificationEmail({
+            email,
+            verificationPath: path,
           });
-          return;
-        }
 
-        // validate if email is eligible for verification
-        const isEligibleForVerification =
-          await verifyEmailPersistor.isEmailEligibleForVerification(email);
-
-        if (!isEligibleForVerification) {
-          res.status(400).json({
-            message:
-              verifyEmailPersistor.errors.EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION ||
-              'Email is already verified',
+          res.status(200).json({
+            message: 'Verification email sent successfully',
           });
-          return;
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({
+            message: 'Internal server error',
+          });
         }
-
-        const path = this.generateEmailVerificationPath(email);
-
-        await verifyEmailPersistor.sendVerificationEmail({
-          email,
-          verificationPath: path,
-        });
-
-        res.status(200).json({
-          message: 'Verification email sent successfully',
-        });
       }
     );
   };
@@ -775,12 +794,12 @@ export class RouteGenerator<P, Q, R, S>
     const tokens = generateTokens(
       { email },
       {
-        ACCESS_TOKEN_AGE: config.EMAIL_VERIFICATION_TOKEN_AGE,
-        REFRESH_TOKEN_AGE: config.REFRESH_TOKEN_AGE,
-        tokenSecret: config.TOKEN_SECRET,
+        ACCESS_TOKEN_AGE: this.config.EMAIL_VERIFICATION_TOKEN_AGE,
+        REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
+        tokenSecret: this.config.TOKEN_SECRET,
       }
     );
 
-    return `${config.BASE_PATH}/verify-email?token=${tokens.accessToken}`;
+    return `${this.config.BASE_PATH}/verify-email?token=${tokens.accessToken}`;
   }
 }
