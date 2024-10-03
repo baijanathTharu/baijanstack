@@ -9,7 +9,7 @@ This library generates routes for authentication.
 1. Install the dependency.
 
 ```bash
-npm install @baijanstack/express-auth@0.0.0-alpha.20
+npm install @baijanstack/express-auth@0.0.0-alpha.23
 ```
 
 ## Description
@@ -41,12 +41,12 @@ Following environment variables must be set:
 The type of the config is TConfig defined in `@baijanstack/express-auth`
 
 ```bash
-SALT_ROUNDS=10
-TOKEN_SECRET=random_secure_secret_value
-ACCESS_TOKEN_AGE=60000
-REFRESH_TOKEN_AGE=240000
-ACCESS_TOKEN_COOKIE_MAX_AGE=60
-REFRESH_TOKEN_COOKIE_MAX_AGE=86400
+SALT_ROUNDS=10 # Salt rounds to use for password hashing
+TOKEN_SECRET=random_secure_secret_value # Token secret to use
+ACCESS_TOKEN_AGE=60000 # Access token age in milliseconds
+REFRESH_TOKEN_AGE=240000 # Refresh token age in milliseconds
+ACCESS_TOKEN_COOKIE_MAX_AGE=60 # Access token cookie max age in seconds
+REFRESH_TOKEN_COOKIE_MAX_AGE=86400 # Refresh token cookie max age in seconds
 ```
 
 ## Example

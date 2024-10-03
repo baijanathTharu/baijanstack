@@ -205,7 +205,7 @@ interface IRouteMiddlewares {
 }
 
 const config: TConfig = {
-  BASE_PATH: '/v1/auth',
+  BASE_PATH: process.env['BASE_PATH'] || '/v1/auth',
   SALT_ROUNDS: Number(process.env['SALT_ROUNDS']) || 10,
   TOKEN_SECRET: process.env['TOKEN_SECRET'] || '',
   ACCESS_TOKEN_AGE: Number(process.env['ACCESS_TOKEN_AGE']) || 60,
