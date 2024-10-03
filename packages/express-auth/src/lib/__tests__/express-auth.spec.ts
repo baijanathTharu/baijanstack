@@ -2,7 +2,6 @@ import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 
-import { writeTestLogToFile } from '../../test-util';
 import { config } from './config';
 import { RouteGenerator } from '../express-auth';
 import {
