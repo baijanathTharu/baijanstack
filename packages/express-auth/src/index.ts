@@ -1,5 +1,5 @@
+export { RouteGenerator } from './lib/express-auth';
 export {
-  RouteGenerator,
   ISignUpPersistor,
   ILoginPersistor,
   ILogoutPersistor,
@@ -8,12 +8,13 @@ export {
   IMeRoutePersistor,
   IVerifyEmailPersistor,
   TConfig,
-} from './lib/express-auth';
+} from './lib/auth-interfaces';
 
 export {
   ISessionManager,
   IStorageManager,
   INotifyService,
-  MemoryStorage,
   SessionManager,
-} from './session-storage/index';
+} from './lib/session-interfaces';
+
+export { MemoryStorage } from './lib/session-storage';

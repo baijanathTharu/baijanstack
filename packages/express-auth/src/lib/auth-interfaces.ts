@@ -1,0 +1,193 @@
+import {
+  Application as ExpressApplication,
+  Request,
+  Response,
+  NextFunction,
+} from 'express';
+
+export type TConfig = {
+  /**
+   * Base path for all routes for e.g. `/v1/auth`
+   */
+  BASE_PATH: string;
+
+  /**
+   * Number of rounds for password hashing
+   */
+  SALT_ROUNDS: number;
+
+  /**
+   * Secret used for generating access and refresh tokens
+   */
+  TOKEN_SECRET: string;
+
+  /**
+   * Age of access tokens when token is signed in seconds
+   */
+  ACCESS_TOKEN_AGE: number;
+
+  /**
+   * Age of refresh tokens when token is signed in seconds
+   */
+  REFRESH_TOKEN_AGE: number;
+
+  /**
+   * Age of access token for email verification in seconds
+   */
+  EMAIL_VERIFICATION_TOKEN_AGE: number;
+};
+
+export interface ISignUpPersistor<P> {
+  errors: {
+    /**
+     * Message that will be returned if user already exists
+     */
+    USER_ALREADY_EXISTS_MESSAGE?: string;
+  };
+
+  /**
+   * Returns true if user already exists in the storage
+   */
+  doesUserExists: (
+    body: P extends { email: string } ? P : never
+  ) => Promise<boolean>;
+
+  /**
+   * Saves user in the storage after hashing password
+   */
+  saveUser: (
+    body: P extends { email: string } ? P : never,
+    hashedPassword: string
+  ) => Promise<void>;
+}
+
+export interface ILoginPersistor<Q> {
+  errors: {
+    /**
+     * Message that will be returned if password or email is incorrect
+     */
+    PASSWORD_OR_EMAIL_INCORRECT?: string;
+  };
+
+  /**
+   * Returns the payload object that is signed in the access and refresh tokens
+   */
+  getTokenPayload: (email: string) => Promise<Omit<Q, 'password'>>;
+
+  /**
+   * Returns the user data from the storage that must contain `email`
+   */
+  getUserByEmail: (
+    email: string
+  ) => Promise<Q extends { email: string; password: string } ? Q : null>;
+}
+
+export interface ILogoutPersistor {
+  /**
+   * Just to have a non empty interface
+   * You should always return true
+   */
+  shouldLogout: () => Promise<boolean>;
+}
+
+export interface IRefreshPersistor<R> {
+  errors: {
+    /**
+     * Message that will be returned if refresh token is invalid
+     */
+    INVALID_REFRESH_TOKEN?: string;
+  };
+
+  /**
+   * Returns the payload object that is signed in the access and refresh tokens
+   */
+  getTokenPayload: (
+    email: string
+  ) => Promise<R extends { email: string } ? R : null>;
+}
+
+/**
+ * In order to reset a password, a user must be logged in.
+ * Access token, old password and new password are sent in the request.
+ */
+export interface IResetPasswordPersistor {
+  /**
+   * Returns the user's old password hash from the storage
+   */
+  getOldPasswordHash: (email: string) => Promise<string>;
+
+  /**
+   * Saves the new password hash in the storage
+   */
+  saveHashedPassword: (email: string, hashedPassword: string) => Promise<void>;
+}
+
+export interface IMeRoutePersistor<S> {
+  /**
+   * Returns the user data from the storage that must contain `email`
+   */
+  getMeByEmail: (
+    email: string
+  ) => Promise<S extends { email: string } ? S : null>;
+}
+
+export interface IVerifyEmailPersistor {
+  errors: {
+    /**
+     * Message that will be returned if email is not eligible for verification
+     */
+    EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string;
+  };
+
+  /**
+   * Check the storage to see if user's email is already verified
+   */
+  isEmailEligibleForVerification: (email: string) => Promise<boolean>;
+
+  /**
+   * Send verification email to the user
+   */
+  sendVerificationEmail: (input: {
+    email: string;
+    /**
+     * Path where the user will be redirected after clicking on the verification link
+     */
+    verificationPath: string;
+  }) => Promise<void>;
+}
+
+export interface IRouteGenerator<P, Q, R, S> {
+  createSignUpRoute: (
+    signUpPersistor: ISignUpPersistor<P>
+  ) => ExpressApplication;
+  createLoginRoute: (loginPersistor: ILoginPersistor<Q>) => ExpressApplication;
+  createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication;
+  createRefreshRoute: (
+    refreshPersistor: IRefreshPersistor<R>
+  ) => ExpressApplication;
+  createResetPasswordRoute: (
+    resetPasswordPersistor: IResetPasswordPersistor
+  ) => ExpressApplication;
+  createMeRoute: (meRoutePersistor: IMeRoutePersistor<S>) => ExpressApplication;
+  createVerifyEmailRoute: (
+    verifyEmailPersistor: IVerifyEmailPersistor
+  ) => ExpressApplication;
+}
+
+export interface IRouteMiddlewares {
+  validateAccessToken: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => void;
+  validateRefreshToken: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => void;
+  validateSessionDeviceInfo: (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => void;
+}
