@@ -156,6 +156,45 @@ export interface IVerifyEmailPersistor {
   }) => Promise<void>;
 }
 
+export interface IForgotPasswordPersistor {
+  /**
+   * Check the storage to see if user exists or not
+   */
+  doesUserExists: (email: string) => Promise<boolean>;
+
+  /**
+   * Save the otp in the storage for verification
+   */
+  saveOtp: (
+    email: string,
+    otp: {
+      code: string;
+      generatedAt: number; // timestamp in seconds
+    }
+  ) => Promise<void>;
+
+  /**
+   * Send otp to the user
+   */
+  sendOtp: (
+    email: string,
+    otp: {
+      code: string;
+      /**
+       * timestamp in seconds
+       */
+      generatedAt: number;
+    }
+  ) => Promise<void>;
+}
+
+export interface IVerifyOtpPersistor {
+  /**
+   * Check the storage to see if otp is valid
+   */
+  isOtpValid: (email: string, otp: string) => Promise<boolean>;
+}
+
 export interface IRouteGenerator<P, Q, R, S> {
   createSignUpRoute: (
     signUpPersistor: ISignUpPersistor<P>
@@ -171,6 +210,12 @@ export interface IRouteGenerator<P, Q, R, S> {
   createMeRoute: (meRoutePersistor: IMeRoutePersistor<S>) => ExpressApplication;
   createVerifyEmailRoute: (
     verifyEmailPersistor: IVerifyEmailPersistor
+  ) => ExpressApplication;
+  createForgotPasswordRoute: (
+    forgotPasswordPersistor: IForgotPasswordPersistor
+  ) => ExpressApplication;
+  createVerifyOtpRoute: (
+    verifyOtpPersistor: IVerifyOtpPersistor
   ) => ExpressApplication;
 }
 

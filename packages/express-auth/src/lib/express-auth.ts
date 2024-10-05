@@ -13,6 +13,7 @@ import {
   verifyToken,
 } from '../utils';
 import {
+  IForgotPasswordPersistor,
   ILoginPersistor,
   ILogoutPersistor,
   IMeRoutePersistor,
@@ -22,6 +23,7 @@ import {
   IRouteMiddlewares,
   ISignUpPersistor,
   IVerifyEmailPersistor,
+  IVerifyOtpPersistor,
   TConfig,
 } from './auth-interfaces';
 import { INotifyService, SessionManager } from './session-interfaces';
@@ -648,6 +650,103 @@ export class RouteGenerator<P, Q, R, S>
     );
   };
 
+  createForgotPasswordRoute: (
+    forgotPasswordPersistor: IForgotPasswordPersistor
+  ) => ExpressApplication = (forgotPasswordPersistor) => {
+    return this.app.post(
+      `${this.config.BASE_PATH}/forgot-password`,
+      async (req, res, next) => {
+        try {
+          const email = req.body.email;
+
+          if (typeof email !== 'string') {
+            res.status(400).json({
+              message: 'Email invalid or not sent from the client',
+            });
+            return;
+          }
+
+          // validate if email is eligible for verification
+          const doesUserExists = await forgotPasswordPersistor.doesUserExists(
+            email
+          );
+
+          if (!doesUserExists) {
+            res.status(400).json({
+              message:
+                "User with that email doesn't exist. Please create an account",
+            });
+            return;
+          }
+
+          const otp = this.generateOTP();
+
+          await forgotPasswordPersistor.saveOtp(email, otp);
+
+          forgotPasswordPersistor.sendOtp(email, {
+            code: otp.code,
+            generatedAt: otp.generatedAt,
+          });
+
+          res.status(200).json({
+            message: 'OTP sent successfully',
+          });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({
+            message: 'Internal server error',
+          });
+        }
+      }
+    );
+  };
+
+  createVerifyOtpRoute: (
+    verifyOtpPersistor: IVerifyOtpPersistor
+  ) => ExpressApplication = (verifyOtpPersistor) => {
+    return this.app.post(
+      `${this.config.BASE_PATH}/verify-otp`,
+      async (req, res, next) => {
+        try {
+          const email = req.body.email;
+          const otp = req.body.otp;
+
+          if (typeof email !== 'string') {
+            res.status(400).json({
+              message: 'Email invalid or not sent from the client',
+            });
+            return;
+          }
+
+          if (typeof otp !== 'string') {
+            res.status(400).json({
+              message: 'OTP invalid or not sent from the client',
+            });
+            return;
+          }
+
+          const isOtpValid = await verifyOtpPersistor.isOtpValid(email, otp);
+
+          if (!isOtpValid) {
+            res.status(400).json({
+              message: 'Invalid OTP',
+            });
+            return;
+          }
+
+          res.status(200).json({
+            message: 'OTP verified successfully',
+          });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({
+            message: 'Internal server error',
+          });
+        }
+      }
+    );
+  };
+
   private generateEmailVerificationPath(email: string): string {
     const tokens = generateTokens(
       { email },
@@ -659,5 +758,15 @@ export class RouteGenerator<P, Q, R, S>
     );
 
     return `${this.config.BASE_PATH}/verify-email?token=${tokens.accessToken}`;
+  }
+
+  private generateOTP() {
+    const code = `${Math.floor(100000 + Math.random() * 900000)}`;
+    const generatedAt = Date.now() / 1000;
+
+    return {
+      code,
+      generatedAt,
+    };
   }
 }
