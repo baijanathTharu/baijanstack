@@ -193,6 +193,11 @@ export interface IVerifyOtpPersistor {
    * Check the storage to see if otp is valid
    */
   isOtpValid: (email: string, otp: string) => Promise<boolean>;
+
+  /**
+   * Save the new password in the storage
+   */
+  saveNewPassword: (email: string, password: string) => Promise<void>;
 }
 
 export interface IRouteGenerator<P, Q, R, S> {

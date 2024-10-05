@@ -710,6 +710,7 @@ export class RouteGenerator<P, Q, R, S>
         try {
           const email = req.body.email;
           const otp = req.body.otp;
+          const newPassword = req.body.newPassword;
 
           if (typeof email !== 'string') {
             res.status(400).json({
@@ -725,6 +726,13 @@ export class RouteGenerator<P, Q, R, S>
             return;
           }
 
+          if (typeof newPassword !== 'string') {
+            res.status(400).json({
+              message: 'New password invalid or not sent from the client',
+            });
+            return;
+          }
+
           const isOtpValid = await verifyOtpPersistor.isOtpValid(email, otp);
 
           if (!isOtpValid) {
@@ -733,6 +741,20 @@ export class RouteGenerator<P, Q, R, S>
             });
             return;
           }
+
+          const [, hashedPassword] = await hashPassword(
+            newPassword,
+            this.config.SALT_ROUNDS
+          );
+
+          if (!hashedPassword) {
+            res.status(500).json({
+              message: 'Password could not be hashed',
+            });
+            return;
+          }
+
+          await verifyOtpPersistor.saveNewPassword(email, hashedPassword);
 
           res.status(200).json({
             message: 'OTP verified successfully',
