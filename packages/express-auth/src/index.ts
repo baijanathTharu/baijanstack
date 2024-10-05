@@ -7,6 +7,8 @@ export {
   IResetPasswordPersistor,
   IMeRoutePersistor,
   IVerifyEmailPersistor,
+  IForgotPasswordPersistor,
+  IVerifyOtpPersistor,
   TConfig,
 } from './lib/auth-interfaces';
 
