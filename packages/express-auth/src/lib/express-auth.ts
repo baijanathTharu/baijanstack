@@ -193,8 +193,8 @@ export class RouteGenerator<P, Q, R, S>
   createLogoutRoute(logoutPersistor: ILogoutPersistor) {
     return this.app.post(
       `${this.config.BASE_PATH}/logout`,
-      this.validateAccessToken,
-      this.validateRefreshToken,
+      this.validateAccessToken.bind(this),
+      this.validateRefreshToken.bind(this),
       this.validateSessionDeviceInfo.bind(this),
 
       async (req, res) => {
@@ -450,7 +450,7 @@ export class RouteGenerator<P, Q, R, S>
   createResetPasswordRoute(resetPasswordPersistor: IResetPasswordPersistor) {
     return this.app.post(
       `${this.config.BASE_PATH}/reset`,
-      this.validateAccessToken,
+      this.validateAccessToken.bind(this),
       this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
         try {
@@ -555,7 +555,7 @@ export class RouteGenerator<P, Q, R, S>
   createMeRoute(meRoutePersistor: IMeRoutePersistor<S>) {
     return this.app.get(
       `${this.config.BASE_PATH}/me`,
-      this.validateAccessToken,
+      this.validateAccessToken.bind(this),
       this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
         try {
