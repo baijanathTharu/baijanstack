@@ -1,5 +1,5 @@
 import {
-  IForgotHandler,
+  IForgotPasswordHandler,
   ILoginHandler,
   ILogoutHandler,
   IMeRouteHandler,
@@ -31,7 +31,7 @@ export function initAuth({
   resetPasswordHandler: IResetPasswordHandler;
   meRouteHandler: IMeRouteHandler;
   verifyEmailHandler: IVerifyEmailHandler;
-  forgotPasswordHandler: IForgotHandler;
+  forgotPasswordHandler: IForgotPasswordHandler;
   verifyOtpHandler: IVerifyOtpHandler;
 }) {
   // sign up route

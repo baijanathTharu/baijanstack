@@ -6,7 +6,7 @@ import {
   IResetPasswordHandler,
   IMeRouteHandler,
   IVerifyEmailHandler,
-  IForgotHandler,
+  IForgotPasswordHandler,
   IVerifyOtpHandler,
 } from '../auth-interfaces';
 import { INotifyService } from '../session-interfaces';
@@ -177,7 +177,7 @@ export class VerifyEmailHandler implements IVerifyEmailHandler {
   };
 }
 
-export class ForgotPasswordHandler implements IForgotHandler {
+export class ForgotPasswordHandler implements IForgotPasswordHandler {
   doesUserExists: (email: string) => Promise<boolean> = async (email) => {
     const user = users.find((user) => user.email === email);
     return !!user;

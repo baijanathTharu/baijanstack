@@ -13,7 +13,7 @@ import {
   verifyToken,
 } from '../utils';
 import {
-  IForgotHandler,
+  IForgotPasswordHandler,
   ILoginHandler,
   ILogoutHandler,
   IMeRouteHandler,
@@ -678,7 +678,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   };
 
   createForgotPasswordRoute: (
-    forgotPasswordHandler: IForgotHandler
+    forgotPasswordHandler: IForgotPasswordHandler
   ) => ExpressApplication = (forgotPasswordHandler) => {
     return this.app.post(
       `${this.config.BASE_PATH}/forgot-password`,
