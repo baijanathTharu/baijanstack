@@ -9,6 +9,20 @@
   "author": {
     "name": "Baijanath Tharu"
   },
+  "contributors": [
+    {
+      "name": "Baijanath Tharu",
+      "url": "https://github.com/baijanathTharu"
+    },
+    {
+      "name": "Santosh Kunwar",
+      "url": "https://github.com/codemon77"
+    },
+    {
+      "name": "Susan Shakya",
+      "url": "https://github.com/susan-shakya1"
+    }
+  ],
   "homepage": "https://github.com/baijanathTharu/baijanstack/blob/main/packages/express-auth/README.md",
   "repository": {
     "type": "git",
