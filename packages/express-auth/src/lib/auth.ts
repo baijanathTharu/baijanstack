@@ -13,17 +13,17 @@ import {
   verifyToken,
 } from '../utils';
 import {
-  IForgotPasswordPersistor,
-  ILoginPersistor,
-  ILogoutPersistor,
-  IMeRoutePersistor,
-  IRefreshPersistor,
-  IResetPasswordPersistor,
+  IForgotHandler,
+  ILoginHandler,
+  ILogoutHandler,
+  IMeRouteHandler,
+  IRefreshHandler,
+  IResetPasswordHandler,
   IRouteGenerator,
   IRouteMiddlewares,
-  ISignUpPersistor,
-  IVerifyEmailPersistor,
-  IVerifyOtpPersistor,
+  ISignUpHandler,
+  IVerifyEmailHandler,
+  IVerifyOtpHandler,
   TConfig,
 } from './auth-interfaces';
 import { INotifyService, SessionManager } from './session-interfaces';
@@ -44,69 +44,70 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     }
   }
 
-  createSignUpRoute: (signUpPersistor: ISignUpPersistor) => ExpressApplication =
-    (signUpPersistor) => {
-      return this.app.post(
-        `${this.config.BASE_PATH}/signup`,
-        async (req, res) => {
-          try {
-            /**
-             * if body does not have email or password, return error
-             */
-            if (!req.body.email) {
-              res.status(400).json({
-                message: 'Email is required',
-              });
-              return;
-            }
-
-            if (!req.body.password) {
-              res.status(400).json({
-                message: 'Password is required',
-              });
-              return;
-            }
-
-            const isUserExists = await signUpPersistor.doesUserExists(req.body);
-            if (isUserExists) {
-              res.status(409).json({
-                message:
-                  signUpPersistor.errors.USER_ALREADY_EXISTS_MESSAGE ??
-                  'User already exists',
-              });
-              return;
-            }
-
-            // !FIXME: password validations can be done here
-            const [_, hashedPasswordStr] = await hashPassword(
-              req.body.password,
-              this.config.SALT_ROUNDS
-            );
-
-            if (!hashedPasswordStr) {
-              res.status(500).json({
-                message: 'Failed to hash the password',
-              });
-              return;
-            }
-
-            await signUpPersistor.saveUser(req.body, hashedPasswordStr);
-
-            res.status(201).json({
-              message: 'User created',
+  createSignUpRoute: (signUpHandler: ISignUpHandler) => ExpressApplication = (
+    signUpHandler
+  ) => {
+    return this.app.post(
+      `${this.config.BASE_PATH}/signup`,
+      async (req, res) => {
+        try {
+          /**
+           * if body does not have email or password, return error
+           */
+          if (!req.body.email) {
+            res.status(400).json({
+              message: 'Email is required',
             });
-          } catch (error) {
-            console.error(error);
-            res.status(500).json({
-              message: 'Internal server error',
-            });
+            return;
           }
-        }
-      );
-    };
 
-  createLoginRoute: (logingPersistor: ILoginPersistor) => ExpressApplication = (
-    logingPersistor
+          if (!req.body.password) {
+            res.status(400).json({
+              message: 'Password is required',
+            });
+            return;
+          }
+
+          const isUserExists = await signUpHandler.doesUserExists(req.body);
+          if (isUserExists) {
+            res.status(409).json({
+              message:
+                signUpHandler.errors.USER_ALREADY_EXISTS_MESSAGE ??
+                'User already exists',
+            });
+            return;
+          }
+
+          // !FIXME: password validations can be done here
+          const [_, hashedPasswordStr] = await hashPassword(
+            req.body.password,
+            this.config.SALT_ROUNDS
+          );
+
+          if (!hashedPasswordStr) {
+            res.status(500).json({
+              message: 'Failed to hash the password',
+            });
+            return;
+          }
+
+          await signUpHandler.saveUser(req.body, hashedPasswordStr);
+
+          res.status(201).json({
+            message: 'User created',
+          });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({
+            message: 'Internal server error',
+          });
+        }
+      }
+    );
+  };
+
+  createLoginRoute: (loginHandler: ILoginHandler) => ExpressApplication = (
+    loginHandler
   ) => {
     return this.app.post(`${this.config.BASE_PATH}/login`, async (req, res) => {
       try {
@@ -124,11 +125,11 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           return;
         }
 
-        const user = await logingPersistor.getUserByEmail(req.body.email);
+        const user = await loginHandler.getUserByEmail(req.body.email);
 
         if (!user) {
           res.status(409).json({
-            message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
+            message: loginHandler.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
           });
           return;
         }
@@ -140,12 +141,12 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
         if (!isPasswordMatch) {
           res.status(409).json({
-            message: logingPersistor.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
+            message: loginHandler.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
           });
           return;
         }
 
-        const payload = await logingPersistor.getTokenPayload(req.body.email);
+        const payload = await loginHandler.getTokenPayload(req.body.email);
 
         const tokens = generateTokens(payload, {
           tokenSecret: this.config.TOKEN_SECRET,
@@ -192,7 +193,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     });
   };
 
-  createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication =
+  createLogoutRoute: (logoutHanlder: ILogoutHandler) => ExpressApplication =
     () => {
       return this.app.post(
         `${this.config.BASE_PATH}/logout`,
@@ -377,105 +378,106 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     }
   };
 
-  createRefreshRoute: (
-    refreshPersistor: IRefreshPersistor
-  ) => ExpressApplication = (refreshPersistor) => {
-    return this.app.post(
-      `${this.config.BASE_PATH}/refresh`,
-      this.validateRefreshToken,
-      this.validateSessionDeviceInfo,
-      async (req, res) => {
-        try {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-expect-error
-          const refreshToken = req['refreshToken'] as string;
+  createRefreshRoute: (refreshHandler: IRefreshHandler) => ExpressApplication =
+    (refreshHandler) => {
+      return this.app.post(
+        `${this.config.BASE_PATH}/refresh`,
+        this.validateRefreshToken,
+        this.validateSessionDeviceInfo,
+        async (req, res) => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-expect-error
+            const refreshToken = req['refreshToken'] as string;
 
-          // validate the refreshToken
-          const decodedToken = await verifyToken({
-            token: refreshToken,
-            tokenSecret: this.config.TOKEN_SECRET,
-          });
-
-          if (!decodedToken) {
-            res.status(400).json({
-              message:
-                refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
-                'Refresh token could not be verified',
+            // validate the refreshToken
+            const decodedToken = await verifyToken({
+              token: refreshToken,
+              tokenSecret: this.config.TOKEN_SECRET,
             });
-            return;
-          }
 
-          /**
-           * Generate new access token and refresh token and set on the cookie
-           */
-          if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
-            res.status(400).json({
-              message:
-                refreshPersistor.errors?.INVALID_REFRESH_TOKEN ||
-                'Decoded token is not an object with email property',
-            });
-            return;
-          }
-          const payload = await refreshPersistor.getTokenPayload(
-            decodedToken['email']
-          );
-
-          const tokens = generateTokens(payload, {
-            tokenSecret: this.config.TOKEN_SECRET,
-            ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
-            REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
-          });
-
-          setCookies({
-            res,
-            cookieData: [
-              {
-                cookieName: 'x-access-token',
-                cookieValue: tokens.accessToken,
-                maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
-              },
-              {
-                cookieName: 'x-refresh-token',
-                cookieValue: tokens.refreshToken,
-                maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
-              },
-            ],
-          });
-
-          if (this.sessionManager) {
-            const deviceInfo = extractDeviceIdentifier(req);
-            /**
-             * Delete the key from the storage
-             */
-            await this.sessionManager?.deleteSession(refreshToken);
+            if (!decodedToken) {
+              res.status(400).json({
+                message:
+                  refreshHandler.errors?.INVALID_REFRESH_TOKEN ||
+                  'Refresh token could not be verified',
+              });
+              return;
+            }
 
             /**
-             * Create a new session in the storage
+             * Generate new access token and refresh token and set on the cookie
              */
-            this.sessionManager.storeSession(
-              tokens.refreshToken,
-              req.body.email,
-              deviceInfo,
-              this.config.REFRESH_TOKEN_AGE * 1000
+            if (
+              !(typeof decodedToken === 'object' && 'email' in decodedToken)
+            ) {
+              res.status(400).json({
+                message:
+                  refreshHandler.errors?.INVALID_REFRESH_TOKEN ||
+                  'Decoded token is not an object with email property',
+              });
+              return;
+            }
+            const payload = await refreshHandler.getTokenPayload(
+              decodedToken['email']
             );
-          }
 
-          res.status(200).json({
-            message: 'Refreshed token successfully!!',
-          });
-        } catch (error) {
-          console.error(error);
-          res.status(500).json({
-            message: 'Internal server error',
-          });
+            const tokens = generateTokens(payload, {
+              tokenSecret: this.config.TOKEN_SECRET,
+              ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
+              REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
+            });
+
+            setCookies({
+              res,
+              cookieData: [
+                {
+                  cookieName: 'x-access-token',
+                  cookieValue: tokens.accessToken,
+                  maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+                },
+                {
+                  cookieName: 'x-refresh-token',
+                  cookieValue: tokens.refreshToken,
+                  maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+                },
+              ],
+            });
+
+            if (this.sessionManager) {
+              const deviceInfo = extractDeviceIdentifier(req);
+              /**
+               * Delete the key from the storage
+               */
+              await this.sessionManager?.deleteSession(refreshToken);
+
+              /**
+               * Create a new session in the storage
+               */
+              this.sessionManager.storeSession(
+                tokens.refreshToken,
+                req.body.email,
+                deviceInfo,
+                this.config.REFRESH_TOKEN_AGE * 1000
+              );
+            }
+
+            res.status(200).json({
+              message: 'Refreshed token successfully!!',
+            });
+          } catch (error) {
+            console.error(error);
+            res.status(500).json({
+              message: 'Internal server error',
+            });
+          }
         }
-      }
-    );
-  };
+      );
+    };
 
   createResetPasswordRoute: (
-    resetPasswordPersistor: IResetPasswordPersistor
-  ) => ExpressApplication = (resetPasswordPersistor) => {
+    resetPasswordHandler: IResetPasswordHandler
+  ) => ExpressApplication = (resetPasswordHandler) => {
     return this.app.post(
       `${this.config.BASE_PATH}/reset`,
       this.validateAccessToken,
@@ -514,8 +516,9 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           const email = decodedToken['email'];
 
-          const oldPasswordHash =
-            await resetPasswordPersistor.getOldPasswordHash(email);
+          const oldPasswordHash = await resetPasswordHandler.getOldPasswordHash(
+            email
+          );
 
           // validating the old password
           const [, isOldPasswordValid] = await comparePassword({
@@ -542,10 +545,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          await resetPasswordPersistor.saveHashedPassword(
-            email,
-            hashedPassword
-          );
+          await resetPasswordHandler.saveHashedPassword(email, hashedPassword);
 
           /**
            * logout
@@ -579,8 +579,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     );
   };
 
-  createMeRoute: (meRoutePersistor: IMeRoutePersistor) => ExpressApplication = (
-    meRoutePersistor
+  createMeRoute: (meRouteHandler: IMeRouteHandler) => ExpressApplication = (
+    meRouteHandler
   ) => {
     return this.app.get(
       `${this.config.BASE_PATH}/me`,
@@ -612,7 +612,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           const email = decodedToken['email'];
 
-          const meData = await meRoutePersistor.getMeByEmail(email);
+          const meData = await meRouteHandler.getMeByEmail(email);
 
           res.status(200).json({
             data: decodedToken,
@@ -629,8 +629,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   };
 
   createVerifyEmailRoute: (
-    verifyEmailPersistor: IVerifyEmailPersistor
-  ) => ExpressApplication = (verifyEmailPersistor) => {
+    verifyEmailHandler: IVerifyEmailHandler
+  ) => ExpressApplication = (verifyEmailHandler) => {
     return this.app.post(
       `${this.config.BASE_PATH}/verify-email`,
       async (req, res, next) => {
@@ -646,13 +646,12 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           // validate if email is eligible for verification
           const isEligibleForVerification =
-            await verifyEmailPersistor.isEmailEligibleForVerification(email);
+            await verifyEmailHandler.isEmailEligibleForVerification(email);
 
           if (!isEligibleForVerification) {
             res.status(400).json({
               message:
-                verifyEmailPersistor.errors
-                  .EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION ||
+                verifyEmailHandler.errors.EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION ||
                 'Email is already verified',
             });
             return;
@@ -660,7 +659,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           const path = this.generateEmailVerificationPath(email);
 
-          await verifyEmailPersistor.sendVerificationEmail({
+          await verifyEmailHandler.sendVerificationEmail({
             email,
             verificationPath: path,
           });
@@ -679,8 +678,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   };
 
   createForgotPasswordRoute: (
-    forgotPasswordPersistor: IForgotPasswordPersistor
-  ) => ExpressApplication = (forgotPasswordPersistor) => {
+    forgotPasswordHandler: IForgotHandler
+  ) => ExpressApplication = (forgotPasswordHandler) => {
     return this.app.post(
       `${this.config.BASE_PATH}/forgot-password`,
       async (req, res, next) => {
@@ -695,7 +694,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           }
 
           // validate if email is eligible for verification
-          const doesUserExists = await forgotPasswordPersistor.doesUserExists(
+          const doesUserExists = await forgotPasswordHandler.doesUserExists(
             email
           );
 
@@ -709,9 +708,9 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           const otp = this.generateOTP();
 
-          await forgotPasswordPersistor.saveOtp(email, otp);
+          await forgotPasswordHandler.saveOtp(email, otp);
 
-          forgotPasswordPersistor.sendOtp(email, {
+          forgotPasswordHandler.sendOtp(email, {
             code: otp.code,
             generatedAt: otp.generatedAt,
           });
@@ -730,8 +729,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   };
 
   createVerifyOtpRoute: (
-    verifyOtpPersistor: IVerifyOtpPersistor
-  ) => ExpressApplication = (verifyOtpPersistor) => {
+    verifyOtpHandler: IVerifyOtpHandler
+  ) => ExpressApplication = (verifyOtpHandler) => {
     return this.app.post(
       `${this.config.BASE_PATH}/verify-otp`,
       async (req, res, next) => {
@@ -761,7 +760,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          const isOtpValid = await verifyOtpPersistor.isOtpValid(email, otp);
+          const isOtpValid = await verifyOtpHandler.isOtpValid(email, otp);
 
           if (!isOtpValid) {
             res.status(400).json({
@@ -782,7 +781,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          await verifyOtpPersistor.saveNewPassword(email, hashedPassword);
+          await verifyOtpHandler.saveNewPassword(email, hashedPassword);
 
           res.status(200).json({
             message: 'OTP verified successfully',

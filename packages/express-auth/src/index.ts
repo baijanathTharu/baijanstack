@@ -1,14 +1,14 @@
 export { RouteGenerator } from './lib/auth';
 export {
-  ISignUpPersistor,
-  ILoginPersistor,
-  ILogoutPersistor,
-  IRefreshPersistor,
-  IResetPasswordPersistor,
-  IMeRoutePersistor,
-  IVerifyEmailPersistor,
-  IForgotPasswordPersistor,
-  IVerifyOtpPersistor,
+  ISignUpHandler as ISignUpPersistor,
+  ILoginHandler as ILoginPersistor,
+  ILogoutHandler as ILogoutPersistor,
+  IRefreshHandler as IRefreshPersistor,
+  IResetPasswordHandler as IResetPasswordPersistor,
+  IMeRouteHandler as IMeRoutePersistor,
+  IVerifyEmailHandler as IVerifyEmailPersistor,
+  IForgotHandler as IForgotPasswordPersistor,
+  IVerifyOtpHandler as IVerifyOtpPersistor,
   TConfig,
 } from './lib/auth-interfaces';
 

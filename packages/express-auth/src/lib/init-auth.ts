@@ -1,13 +1,13 @@
 import {
-  IForgotPasswordPersistor,
-  ILoginPersistor,
-  ILogoutPersistor,
-  IMeRoutePersistor,
-  IRefreshPersistor,
-  IResetPasswordPersistor,
-  ISignUpPersistor,
-  IVerifyEmailPersistor,
-  IVerifyOtpPersistor,
+  IForgotHandler,
+  ILoginHandler,
+  ILogoutHandler,
+  IMeRouteHandler,
+  IRefreshHandler,
+  IResetPasswordHandler,
+  ISignUpHandler,
+  IVerifyEmailHandler,
+  IVerifyOtpHandler,
 } from './auth-interfaces';
 import { RouteGenerator } from './auth';
 
@@ -24,15 +24,15 @@ export function initAuth({
   verifyOtpPersistor,
 }: {
   routeGenerator: RouteGenerator;
-  signUpPersistor: ISignUpPersistor;
-  loginPersistor: ILoginPersistor;
-  logoutPersistor: ILogoutPersistor;
-  refreshPersistor: IRefreshPersistor;
-  resetPasswordPersistor: IResetPasswordPersistor;
-  meRoutePersistor: IMeRoutePersistor;
-  verifyEmailPersistor: IVerifyEmailPersistor;
-  forgotPasswordPersistor: IForgotPasswordPersistor;
-  verifyOtpPersistor: IVerifyOtpPersistor;
+  signUpPersistor: ISignUpHandler;
+  loginPersistor: ILoginHandler;
+  logoutPersistor: ILogoutHandler;
+  refreshPersistor: IRefreshHandler;
+  resetPasswordPersistor: IResetPasswordHandler;
+  meRoutePersistor: IMeRouteHandler;
+  verifyEmailPersistor: IVerifyEmailHandler;
+  forgotPasswordPersistor: IForgotHandler;
+  verifyOtpPersistor: IVerifyOtpHandler;
 }) {
   // sign up route
   routeGenerator.createSignUpRoute(signUpPersistor);

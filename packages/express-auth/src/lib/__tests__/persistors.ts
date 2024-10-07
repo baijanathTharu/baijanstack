@@ -1,11 +1,11 @@
 import {
-  ISignUpPersistor,
-  ILoginPersistor,
-  ILogoutPersistor,
-  IRefreshPersistor,
-  IResetPasswordPersistor,
-  IMeRoutePersistor,
-  IVerifyEmailPersistor,
+  ISignUpHandler,
+  ILoginHandler,
+  ILogoutHandler,
+  IRefreshHandler,
+  IResetPasswordHandler,
+  IMeRouteHandler,
+  IVerifyEmailHandler,
 } from '../auth-interfaces';
 import { INotifyService } from '../session-interfaces';
 
@@ -27,7 +27,7 @@ interface TSignUpBodyInput extends TEmailObj {
   password: string;
 }
 
-export class SignUpPersistor implements ISignUpPersistor<TSignUpBodyInput> {
+export class SignUpPersistor implements ISignUpHandler<TSignUpBodyInput> {
   constructor() {
     console.log('signup persistor init...');
   }
@@ -58,7 +58,7 @@ type TLoginOutput = {
   password: string;
 };
 
-export class LoginPersistor implements ILoginPersistor<TLoginOutput> {
+export class LoginPersistor implements ILoginHandler<TLoginOutput> {
   getUserByEmail: (email: string) => Promise<any> = async (email) => {
     const user = await users.find((user) => user.email === email);
 
@@ -93,7 +93,7 @@ export class LoginPersistor implements ILoginPersistor<TLoginOutput> {
   };
 }
 
-export class LogoutPersistor implements ILogoutPersistor {
+export class LogoutPersistor implements ILogoutHandler {
   shouldLogout: () => Promise<boolean> = async () => {
     return true;
   };
@@ -104,7 +104,7 @@ type TRefreshOutput = {
   name: string;
 };
 
-export class RefreshPersistor implements IRefreshPersistor<TRefreshOutput> {
+export class RefreshPersistor implements IRefreshHandler<TRefreshOutput> {
   errors: { INVALID_REFRESH_TOKEN?: string } = {};
 
   refresh: (token: string) => Promise<void> = async () => {
@@ -125,7 +125,7 @@ export class RefreshPersistor implements IRefreshPersistor<TRefreshOutput> {
   };
 }
 
-export class ResetPasswordPersistor implements IResetPasswordPersistor {
+export class ResetPasswordPersistor implements IResetPasswordHandler {
   saveHashedPassword: (email: string, hashedPassword: string) => Promise<void> =
     async (email, hashedPassword) => {
       const userIdx = users.findIndex((user) => user.email === email);
@@ -149,7 +149,7 @@ type TMeOutput = {
   email: string;
 };
 
-export class MeRoutePersistor implements IMeRoutePersistor<TMeOutput> {
+export class MeRoutePersistor implements IMeRouteHandler<TMeOutput> {
   getMeByEmail: (email: string) => Promise<any> = async (email) => {
     const user = users.find((user) => user.email === email);
 
@@ -164,7 +164,7 @@ export class MeRoutePersistor implements IMeRoutePersistor<TMeOutput> {
   };
 }
 
-export class VerifyEmailPersistor implements IVerifyEmailPersistor {
+export class VerifyEmailPersistor implements IVerifyEmailHandler {
   errors: { EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string } = {
     EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION: '',
   };
