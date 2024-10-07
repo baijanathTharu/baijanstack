@@ -235,7 +235,7 @@ export class RouteGenerator<P, Q, R, S>
     );
   }
 
-  validateAccessToken(req: Request, res: Response, next: NextFunction) {
+  validateAccessToken = (req: Request, res: Response, next: NextFunction) => {
     try {
       const cookies = req.cookies;
       if (!cookies) {
@@ -276,7 +276,7 @@ export class RouteGenerator<P, Q, R, S>
       });
       return;
     }
-  }
+  };
 
   validateRefreshToken(req: Request, res: Response, next: NextFunction) {
     try {
