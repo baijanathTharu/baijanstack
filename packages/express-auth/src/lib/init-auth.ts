@@ -13,53 +13,53 @@ import { RouteGenerator } from './auth';
 
 export function initAuth({
   routeGenerator,
-  signUpPersistor,
-  loginPersistor,
-  logoutPersistor,
-  refreshPersistor,
-  resetPasswordPersistor,
-  meRoutePersistor,
-  verifyEmailPersistor,
-  forgotPasswordPersistor,
-  verifyOtpPersistor,
+  signUpHandler,
+  loginHandler,
+  logoutHandler,
+  refreshHandler,
+  resetPasswordHandler,
+  meRouteHandler,
+  verifyEmailHandler,
+  forgotPasswordHandler,
+  verifyOtpHandler,
 }: {
   routeGenerator: RouteGenerator;
-  signUpPersistor: ISignUpHandler;
-  loginPersistor: ILoginHandler;
-  logoutPersistor: ILogoutHandler;
-  refreshPersistor: IRefreshHandler;
-  resetPasswordPersistor: IResetPasswordHandler;
-  meRoutePersistor: IMeRouteHandler;
-  verifyEmailPersistor: IVerifyEmailHandler;
-  forgotPasswordPersistor: IForgotHandler;
-  verifyOtpPersistor: IVerifyOtpHandler;
+  signUpHandler: ISignUpHandler;
+  loginHandler: ILoginHandler;
+  logoutHandler: ILogoutHandler;
+  refreshHandler: IRefreshHandler;
+  resetPasswordHandler: IResetPasswordHandler;
+  meRouteHandler: IMeRouteHandler;
+  verifyEmailHandler: IVerifyEmailHandler;
+  forgotPasswordHandler: IForgotHandler;
+  verifyOtpHandler: IVerifyOtpHandler;
 }) {
   // sign up route
-  routeGenerator.createSignUpRoute(signUpPersistor);
+  routeGenerator.createSignUpRoute(signUpHandler);
 
   // login route
-  routeGenerator.createLoginRoute(loginPersistor);
+  routeGenerator.createLoginRoute(loginHandler);
 
   // logout route
-  routeGenerator.createLogoutRoute(logoutPersistor);
+  routeGenerator.createLogoutRoute(logoutHandler);
 
   // refresh route
-  routeGenerator.createRefreshRoute(refreshPersistor);
+  routeGenerator.createRefreshRoute(refreshHandler);
 
   // reset password route
-  routeGenerator.createResetPasswordRoute(resetPasswordPersistor);
+  routeGenerator.createResetPasswordRoute(resetPasswordHandler);
 
   // me route
-  routeGenerator.createMeRoute(meRoutePersistor);
+  routeGenerator.createMeRoute(meRouteHandler);
 
   // verify email route
-  routeGenerator.createVerifyEmailRoute(verifyEmailPersistor);
+  routeGenerator.createVerifyEmailRoute(verifyEmailHandler);
 
   // forgot password route
-  routeGenerator.createForgotPasswordRoute(forgotPasswordPersistor);
+  routeGenerator.createForgotPasswordRoute(forgotPasswordHandler);
 
   // verify otp route
-  routeGenerator.createVerifyOtpRoute(verifyOtpPersistor);
+  routeGenerator.createVerifyOtpRoute(verifyOtpHandler);
 
   return routeGenerator;
 }

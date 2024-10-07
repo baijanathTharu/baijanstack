@@ -3,17 +3,19 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 
 import { config } from './config';
-import { RouteGenerator } from '../express-auth';
+import { initAuth } from '../init-auth';
+import { RouteGenerator } from '../auth';
 import {
-  LoginPersistor,
-  LogoutPersistor,
-  MeRoutePersistor,
-  RefreshPersistor,
-  ResetPasswordPersistor,
-  SignUpPersistor,
-  VerifyEmailPersistor,
-  TUser,
-} from './persistors';
+  ForgotPasswordHandler,
+  LoginHandler,
+  LogoutHandler,
+  MeRouteHandler,
+  RefreshHandler,
+  ResetPasswordHandler,
+  SignUpHandler,
+  VerifyEmailHandler,
+  VerifyOtpHandler,
+} from './handlers';
 import { EmailNotificationService } from './notifier';
 
 const john = {
@@ -39,36 +41,18 @@ describe('expressAuth', () => {
       config
     );
 
-    // sign up route
-    const signUpPersistor = new SignUpPersistor();
-    routeGenerator.createSignUpRoute(signUpPersistor);
-
-    // login route
-    const loginPersistor = new LoginPersistor();
-    routeGenerator.createLoginRoute(loginPersistor);
-
-    // logout route
-    const logoutPersistor = new LogoutPersistor();
-    routeGenerator.createLogoutRoute(logoutPersistor);
-
-    // refresh route
-    const refreshPersistor = new RefreshPersistor();
-    routeGenerator.createRefreshRoute(refreshPersistor);
-
-    // reset password route
-    const resetPasswordPersistor = new ResetPasswordPersistor();
-    routeGenerator.createResetPasswordRoute(resetPasswordPersistor);
-
-    // verify email route
-    const verifyEmailPersistor = new VerifyEmailPersistor();
-    routeGenerator.createVerifyEmailRoute(verifyEmailPersistor);
-
-    // me route
-    const meRoutePersistor = new MeRoutePersistor();
-    routeGenerator.createMeRoute(meRoutePersistor);
-
-    // !TODO: Verify email route redirection route
-    // !TODO: forgot password route
+    initAuth({
+      routeGenerator,
+      signUpHandler: new SignUpHandler(),
+      loginHandler: new LoginHandler(),
+      logoutHandler: new LogoutHandler(),
+      refreshHandler: new RefreshHandler(),
+      resetPasswordHandler: new ResetPasswordHandler(),
+      meRouteHandler: new MeRouteHandler(),
+      verifyEmailHandler: new VerifyEmailHandler(),
+      forgotPasswordHandler: new ForgotPasswordHandler(),
+      verifyOtpHandler: new VerifyOtpHandler(),
+    });
   });
 
   it('should not be able to sign up without an email', async () => {

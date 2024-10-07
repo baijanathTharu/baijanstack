@@ -48,16 +48,21 @@ export interface ISignUpHandler {
   /**
    * Returns true if user already exists in the storage
    */
-  doesUserExists: (body: {
-    email: string;
-    [key: string]: any;
-  }) => Promise<boolean>;
+  doesUserExists: (
+    /**
+     * Body of the request that contains `email`
+     */
+    body: any
+  ) => Promise<boolean>;
 
   /**
    * Saves user in the storage after hashing password
    */
   saveUser: (
-    body: { email: string; [key: string]: any },
+    /**
+     * Body of the request that contains `email` and `name`
+     */
+    body: any,
     hashedPassword: string
   ) => Promise<void>;
 }
@@ -76,11 +81,9 @@ export interface ILoginHandler {
   getTokenPayload: (email: string) => Promise<any>;
 
   /**
-   * Returns the user data from the storage that must contain `email`
+   * Returns the user data from the storage that must contain `email` and `password`
    */
-  getUserByEmail: (
-    email: string
-  ) => Promise<{ email: string; password: string; [key: string]: any }>;
+  getUserByEmail: (email: string) => Promise<any>;
 }
 
 export interface ILogoutHandler {
@@ -100,11 +103,9 @@ export interface IRefreshHandler {
   };
 
   /**
-   * Returns the payload object that is signed in the access and refresh tokens
+   * Returns the payload object that must contains `email` that is signed in the access and refresh tokens
    */
-  getTokenPayload: (
-    email: string
-  ) => Promise<{ email: string; [key: string]: any }>;
+  getTokenPayload: (email: string) => Promise<any>;
 }
 
 /**
@@ -127,9 +128,7 @@ export interface IMeRouteHandler {
   /**
    * Returns the user data from the storage that must contain `email`
    */
-  getMeByEmail: (
-    email: string
-  ) => Promise<{ email: string; [key: string]: any }>;
+  getMeByEmail: (email: string) => Promise<any>;
 }
 
 export interface IVerifyEmailHandler {

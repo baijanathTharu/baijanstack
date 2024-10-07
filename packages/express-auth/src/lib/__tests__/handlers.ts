@@ -6,6 +6,8 @@ import {
   IResetPasswordHandler,
   IMeRouteHandler,
   IVerifyEmailHandler,
+  IForgotHandler,
+  IVerifyOtpHandler,
 } from '../auth-interfaces';
 import { INotifyService } from '../session-interfaces';
 
@@ -14,6 +16,10 @@ export type TUser = {
   email: string;
   password: string;
   is_email_verified: boolean;
+  otps: {
+    code: string;
+    generatedAt: number;
+  }[];
 };
 
 const users: TUser[] = [];
@@ -27,7 +33,7 @@ interface TSignUpBodyInput extends TEmailObj {
   password: string;
 }
 
-export class SignUpPersistor implements ISignUpHandler<TSignUpBodyInput> {
+export class SignUpHandler implements ISignUpHandler {
   constructor() {
     console.log('signup persistor init...');
   }
@@ -48,22 +54,16 @@ export class SignUpPersistor implements ISignUpHandler<TSignUpBodyInput> {
         email: body.email,
         password: hashedPassword,
         is_email_verified: false,
+        otps: [],
       });
     };
 }
 
-type TLoginOutput = {
-  name: string;
-  email: string;
-  password: string;
-};
-
-export class LoginPersistor implements ILoginHandler<TLoginOutput> {
-  getUserByEmail: (email: string) => Promise<any> = async (email) => {
+export class LoginHandler implements ILoginHandler {
+  getUserByEmail: (email: string) => Promise<TUser | null> = async (email) => {
     const user = await users.find((user) => user.email === email);
 
     if (!user) {
-      console.error('User not found');
       return null;
     }
 
@@ -72,18 +72,15 @@ export class LoginPersistor implements ILoginHandler<TLoginOutput> {
   errors: { PASSWORD_OR_EMAIL_INCORRECT?: string } = {
     PASSWORD_OR_EMAIL_INCORRECT: 'Password or email incorrect',
   };
-  login: () => Promise<void> = async () => {
-    console.log('logged in successfully!!');
-  };
 
   getTokenPayload: (email: string) => Promise<{
     name: string;
     email: string;
-  }> = async (email) => {
+  } | null> = async (email) => {
     const user = users.find((user) => user.email === email);
 
     if (!user) {
-      throw new Error('User not found');
+      return null;
     }
 
     return {
@@ -93,29 +90,27 @@ export class LoginPersistor implements ILoginHandler<TLoginOutput> {
   };
 }
 
-export class LogoutPersistor implements ILogoutHandler {
+export class LogoutHandler implements ILogoutHandler {
   shouldLogout: () => Promise<boolean> = async () => {
     return true;
   };
 }
 
-type TRefreshOutput = {
-  email: string;
-  name: string;
-};
-
-export class RefreshPersistor implements IRefreshHandler<TRefreshOutput> {
+export class RefreshHandler implements IRefreshHandler {
   errors: { INVALID_REFRESH_TOKEN?: string } = {};
 
   refresh: (token: string) => Promise<void> = async () => {
     console.log('refreshing token...');
   };
 
-  getTokenPayload: (email: string) => Promise<any> = async (email) => {
+  getTokenPayload: (email: string) => Promise<{
+    name: string;
+    email: string;
+  } | null> = async (email) => {
     const user = users.find((user) => user.email === email);
 
     if (!user) {
-      throw new Error('User not found');
+      return null;
     }
 
     return {
@@ -125,7 +120,7 @@ export class RefreshPersistor implements IRefreshHandler<TRefreshOutput> {
   };
 }
 
-export class ResetPasswordPersistor implements IResetPasswordHandler {
+export class ResetPasswordHandler implements IResetPasswordHandler {
   saveHashedPassword: (email: string, hashedPassword: string) => Promise<void> =
     async (email, hashedPassword) => {
       const userIdx = users.findIndex((user) => user.email === email);
@@ -138,23 +133,20 @@ export class ResetPasswordPersistor implements IResetPasswordHandler {
   getOldPasswordHash: (email: string) => Promise<string> = async (email) => {
     const user = users.find((user) => user.email === email);
     if (!user) {
-      throw new Error(`User not found`);
+      return '';
     }
     return user.password;
   };
 }
 
-type TMeOutput = {
-  name: string;
-  email: string;
-};
-
-export class MeRoutePersistor implements IMeRouteHandler<TMeOutput> {
-  getMeByEmail: (email: string) => Promise<any> = async (email) => {
+export class MeRouteHandler implements IMeRouteHandler {
+  getMeByEmail: (
+    email: string
+  ) => Promise<{ email: string; name: string } | null> = async (email) => {
     const user = users.find((user) => user.email === email);
 
     if (!user) {
-      throw new Error('User not found');
+      return null;
     }
 
     return {
@@ -164,7 +156,7 @@ export class MeRoutePersistor implements IMeRouteHandler<TMeOutput> {
   };
 }
 
-export class VerifyEmailPersistor implements IVerifyEmailHandler {
+export class VerifyEmailHandler implements IVerifyEmailHandler {
   errors: { EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string } = {
     EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION: '',
   };
@@ -182,6 +174,66 @@ export class VerifyEmailPersistor implements IVerifyEmailHandler {
     verificationPath: string;
   }) => Promise<void> = async (input) => {
     console.log('sendVerificationEmail Input', input);
+  };
+}
+
+export class ForgotPasswordHandler implements IForgotHandler {
+  doesUserExists: (email: string) => Promise<boolean> = async (email) => {
+    const user = users.find((user) => user.email === email);
+    return !!user;
+  };
+
+  saveOtp: (
+    email: string,
+    otp: { code: string; generatedAt: number }
+  ) => Promise<void> = async (email, otp) => {
+    const userIdx = users.findIndex((user) => user.email === email);
+    if (userIdx < 0) {
+      throw new Error(`User not found`);
+    }
+    users[userIdx].otps.push(otp);
+  };
+
+  sendOtp: (
+    email: string,
+    otp: { code: string; generatedAt: number }
+  ) => Promise<void> = async (email, otp) => {
+    console.log('sendOtp', email, otp);
+  };
+}
+
+export class VerifyOtpHandler implements IVerifyOtpHandler {
+  isOtpValid: (email: string, otp: string) => Promise<boolean> = async (
+    email,
+    otp
+  ) => {
+    const user = users.find((user) => user.email === email);
+    if (!user) {
+      return false;
+    }
+    const lastOtp = user.otps[user.otps.length - 1];
+
+    if (!lastOtp) {
+      return false;
+    }
+
+    if (lastOtp.code !== otp) {
+      return false;
+    }
+
+    const isExpired = lastOtp.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
+    return !isExpired;
+  };
+
+  saveNewPassword: (email: string, password: string) => Promise<void> = async (
+    email,
+    password
+  ) => {
+    const userIdx = users.findIndex((user) => user.email === email);
+    if (userIdx < 0) {
+      throw new Error(`User not found`);
+    }
+    users[userIdx].password = password;
   };
 }
 
