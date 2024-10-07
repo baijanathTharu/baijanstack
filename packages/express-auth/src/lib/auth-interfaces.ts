@@ -37,7 +37,7 @@ export type TConfig = {
   EMAIL_VERIFICATION_TOKEN_AGE: number;
 };
 
-export interface ISignUpPersistor<P> {
+export interface ISignUpPersistor {
   errors: {
     /**
      * Message that will be returned if user already exists
@@ -48,20 +48,21 @@ export interface ISignUpPersistor<P> {
   /**
    * Returns true if user already exists in the storage
    */
-  doesUserExists: (
-    body: P extends { email: string } ? P : never
-  ) => Promise<boolean>;
+  doesUserExists: (body: {
+    email: string;
+    [key: string]: any;
+  }) => Promise<boolean>;
 
   /**
    * Saves user in the storage after hashing password
    */
   saveUser: (
-    body: P extends { email: string } ? P : never,
+    body: { email: string; [key: string]: any },
     hashedPassword: string
   ) => Promise<void>;
 }
 
-export interface ILoginPersistor<Q> {
+export interface ILoginPersistor {
   errors: {
     /**
      * Message that will be returned if password or email is incorrect
@@ -72,14 +73,14 @@ export interface ILoginPersistor<Q> {
   /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
-  getTokenPayload: (email: string) => Promise<Omit<Q, 'password'>>;
+  getTokenPayload: (email: string) => Promise<any>;
 
   /**
    * Returns the user data from the storage that must contain `email`
    */
   getUserByEmail: (
     email: string
-  ) => Promise<Q extends { email: string; password: string } ? Q : null>;
+  ) => Promise<{ email: string; password: string; [key: string]: any }>;
 }
 
 export interface ILogoutPersistor {
@@ -90,7 +91,7 @@ export interface ILogoutPersistor {
   shouldLogout: () => Promise<boolean>;
 }
 
-export interface IRefreshPersistor<R> {
+export interface IRefreshPersistor {
   errors: {
     /**
      * Message that will be returned if refresh token is invalid
@@ -103,7 +104,7 @@ export interface IRefreshPersistor<R> {
    */
   getTokenPayload: (
     email: string
-  ) => Promise<R extends { email: string } ? R : null>;
+  ) => Promise<{ email: string; [key: string]: any }>;
 }
 
 /**
@@ -122,13 +123,13 @@ export interface IResetPasswordPersistor {
   saveHashedPassword: (email: string, hashedPassword: string) => Promise<void>;
 }
 
-export interface IMeRoutePersistor<S> {
+export interface IMeRoutePersistor {
   /**
    * Returns the user data from the storage that must contain `email`
    */
   getMeByEmail: (
     email: string
-  ) => Promise<S extends { email: string } ? S : null>;
+  ) => Promise<{ email: string; [key: string]: any }>;
 }
 
 export interface IVerifyEmailPersistor {
@@ -200,19 +201,17 @@ export interface IVerifyOtpPersistor {
   saveNewPassword: (email: string, password: string) => Promise<void>;
 }
 
-export interface IRouteGenerator<P, Q, R, S> {
-  createSignUpRoute: (
-    signUpPersistor: ISignUpPersistor<P>
-  ) => ExpressApplication;
-  createLoginRoute: (loginPersistor: ILoginPersistor<Q>) => ExpressApplication;
+export interface IRouteGenerator {
+  createSignUpRoute: (signUpPersistor: ISignUpPersistor) => ExpressApplication;
+  createLoginRoute: (loginPersistor: ILoginPersistor) => ExpressApplication;
   createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication;
   createRefreshRoute: (
-    refreshPersistor: IRefreshPersistor<R>
+    refreshPersistor: IRefreshPersistor
   ) => ExpressApplication;
   createResetPasswordRoute: (
     resetPasswordPersistor: IResetPasswordPersistor
   ) => ExpressApplication;
-  createMeRoute: (meRoutePersistor: IMeRoutePersistor<S>) => ExpressApplication;
+  createMeRoute: (meRoutePersistor: IMeRoutePersistor) => ExpressApplication;
   createVerifyEmailRoute: (
     verifyEmailPersistor: IVerifyEmailPersistor
   ) => ExpressApplication;

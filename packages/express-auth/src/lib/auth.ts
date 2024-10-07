@@ -29,9 +29,7 @@ import {
 import { INotifyService, SessionManager } from './session-interfaces';
 import { MemoryStorage } from './session-storage';
 
-export class RouteGenerator<P, Q, R, S>
-  implements IRouteGenerator<P, Q, R, S>, IRouteMiddlewares
-{
+export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   constructor(
     private app: ExpressApplication,
     private notifyService: INotifyService,
@@ -46,67 +44,70 @@ export class RouteGenerator<P, Q, R, S>
     }
   }
 
-  createSignUpRoute(signUpPersistor: ISignUpPersistor<P>) {
-    return this.app.post(
-      `${this.config.BASE_PATH}/signup`,
-      async (req, res) => {
-        try {
-          /**
-           * if body does not have email or password, return error
-           */
-          if (!req.body.email) {
-            res.status(400).json({
-              message: 'Email is required',
+  createSignUpRoute: (signUpPersistor: ISignUpPersistor) => ExpressApplication =
+    (signUpPersistor) => {
+      return this.app.post(
+        `${this.config.BASE_PATH}/signup`,
+        async (req, res) => {
+          try {
+            /**
+             * if body does not have email or password, return error
+             */
+            if (!req.body.email) {
+              res.status(400).json({
+                message: 'Email is required',
+              });
+              return;
+            }
+
+            if (!req.body.password) {
+              res.status(400).json({
+                message: 'Password is required',
+              });
+              return;
+            }
+
+            const isUserExists = await signUpPersistor.doesUserExists(req.body);
+            if (isUserExists) {
+              res.status(409).json({
+                message:
+                  signUpPersistor.errors.USER_ALREADY_EXISTS_MESSAGE ??
+                  'User already exists',
+              });
+              return;
+            }
+
+            // !FIXME: password validations can be done here
+            const [_, hashedPasswordStr] = await hashPassword(
+              req.body.password,
+              this.config.SALT_ROUNDS
+            );
+
+            if (!hashedPasswordStr) {
+              res.status(500).json({
+                message: 'Failed to hash the password',
+              });
+              return;
+            }
+
+            await signUpPersistor.saveUser(req.body, hashedPasswordStr);
+
+            res.status(201).json({
+              message: 'User created',
             });
-            return;
-          }
-
-          if (!req.body.password) {
-            res.status(400).json({
-              message: 'Password is required',
-            });
-            return;
-          }
-
-          const isUserExists = await signUpPersistor.doesUserExists(req.body);
-          if (isUserExists) {
-            res.status(409).json({
-              message:
-                signUpPersistor.errors.USER_ALREADY_EXISTS_MESSAGE ??
-                'User already exists',
-            });
-            return;
-          }
-
-          // !FIXME: password validations can be done here
-          const [_, hashedPasswordStr] = await hashPassword(
-            req.body.password,
-            this.config.SALT_ROUNDS
-          );
-
-          if (!hashedPasswordStr) {
+          } catch (error) {
+            console.error(error);
             res.status(500).json({
-              message: 'Failed to hash the password',
+              message: 'Internal server error',
             });
-            return;
           }
-
-          await signUpPersistor.saveUser(req.body, hashedPasswordStr);
-
-          res.status(201).json({
-            message: 'User created',
-          });
-        } catch (error) {
-          console.error(error);
-          res.status(500).json({
-            message: 'Internal server error',
-          });
         }
-      }
-    );
-  }
+      );
+    };
 
-  createLoginRoute(logingPersistor: ILoginPersistor<Q>) {
+  createLoginRoute: (logingPersistor: ILoginPersistor) => ExpressApplication = (
+    logingPersistor
+  ) => {
     return this.app.post(`${this.config.BASE_PATH}/login`, async (req, res) => {
       try {
         if (!req.body.email) {
@@ -189,51 +190,51 @@ export class RouteGenerator<P, Q, R, S>
         });
       }
     });
-  }
+  };
 
-  createLogoutRoute(logoutPersistor: ILogoutPersistor) {
-    return this.app.post(
-      `${this.config.BASE_PATH}/logout`,
-      this.validateAccessToken.bind(this),
-      this.validateRefreshToken.bind(this),
-      this.validateSessionDeviceInfo.bind(this),
+  createLogoutRoute: (logoutPersistor: ILogoutPersistor) => ExpressApplication =
+    () => {
+      return this.app.post(
+        `${this.config.BASE_PATH}/logout`,
+        this.validateAccessToken,
+        this.validateRefreshToken,
 
-      async (req, res) => {
-        try {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-expect-error
-          const refreshToken = req['refreshToken'];
+        async (req, res) => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-expect-error
+            const refreshToken = req['refreshToken'];
 
-          setCookies({
-            res,
-            cookieData: [
-              {
-                cookieName: 'x-access-token',
-                cookieValue: '',
-                maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
-              },
-              {
-                cookieName: 'x-refresh-token',
-                cookieValue: '',
-                maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
-              },
-            ],
-          });
+            setCookies({
+              res,
+              cookieData: [
+                {
+                  cookieName: 'x-access-token',
+                  cookieValue: '',
+                  maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+                },
+                {
+                  cookieName: 'x-refresh-token',
+                  cookieValue: '',
+                  maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+                },
+              ],
+            });
 
-          await this.sessionManager?.deleteSession(refreshToken);
+            await this.sessionManager?.deleteSession(refreshToken);
 
-          res.status(200).json({
-            message: 'Logged out successfully!!',
-          });
-        } catch (error) {
-          console.error(error);
-          res.status(500).json({
-            message: 'Internal server error',
-          });
+            res.status(200).json({
+              message: 'Logged out successfully!!',
+            });
+          } catch (error) {
+            console.error(error);
+            res.status(500).json({
+              message: 'Internal server error',
+            });
+          }
         }
-      }
-    );
-  }
+      );
+    };
 
   validateAccessToken = (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -278,7 +279,7 @@ export class RouteGenerator<P, Q, R, S>
     }
   };
 
-  validateRefreshToken(req: Request, res: Response, next: NextFunction) {
+  validateRefreshToken = (req: Request, res: Response, next: NextFunction) => {
     try {
       const cookies = req.cookies;
       if (!cookies) {
@@ -319,22 +320,26 @@ export class RouteGenerator<P, Q, R, S>
       });
       return;
     }
-  }
+  };
 
-  async validateSessionDeviceInfo(
+  validateSessionDeviceInfo = async (
     req: Request,
     res: Response,
     next: NextFunction
-  ) {
+  ) => {
     const refreshToken = req.cookies['x-refresh-token'];
     const deviceInfo = extractDeviceIdentifier(req);
 
     if (!refreshToken) {
-      return res.status(401).send('Unauthorized: Missing refresh token.');
+      return res
+        .status(401)
+        .json({ message: 'Unauthorized: Missing refresh token.' });
     }
 
     if (!deviceInfo) {
-      return res.status(401).send('Unauthorized: Missing device info');
+      return res.status(401).json({
+        message: 'Unauthorized: Missing device info',
+      });
     }
 
     try {
@@ -342,7 +347,9 @@ export class RouteGenerator<P, Q, R, S>
         const session = await this.sessionManager.getSession(refreshToken);
 
         if (!session) {
-          return res.status(401).send('Unauthorized: Session not found');
+          return res
+            .status(401)
+            .json({ message: 'Unauthorized: Session not found' });
         }
 
         const isValidDevice = await this.sessionManager.verifyDevice(
@@ -358,7 +365,7 @@ export class RouteGenerator<P, Q, R, S>
             this.notifyService.notify('TOKEN_STOLEN', userEmail);
           }
           await this.sessionManager.deleteSession(refreshToken);
-          return res.status(401).send('Unauthorized device.');
+          return res.status(401).json({ message: 'Unauthorized device.' });
         }
       }
 
@@ -366,17 +373,17 @@ export class RouteGenerator<P, Q, R, S>
       return;
     } catch (error) {
       console.error(error);
-      return res
-        .status(500)
-        .send('Internal server error during authentication');
+      return res.status(500).json({ message: 'Internal server error' });
     }
-  }
+  };
 
-  createRefreshRoute(refreshPersistor: IRefreshPersistor<R>) {
+  createRefreshRoute: (
+    refreshPersistor: IRefreshPersistor
+  ) => ExpressApplication = (refreshPersistor) => {
     return this.app.post(
       `${this.config.BASE_PATH}/refresh`,
-      this.validateRefreshToken.bind(this),
-      this.validateSessionDeviceInfo.bind(this),
+      this.validateRefreshToken,
+      this.validateSessionDeviceInfo,
       async (req, res) => {
         try {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -464,13 +471,14 @@ export class RouteGenerator<P, Q, R, S>
         }
       }
     );
-  }
+  };
 
-  createResetPasswordRoute(resetPasswordPersistor: IResetPasswordPersistor) {
+  createResetPasswordRoute: (
+    resetPasswordPersistor: IResetPasswordPersistor
+  ) => ExpressApplication = (resetPasswordPersistor) => {
     return this.app.post(
       `${this.config.BASE_PATH}/reset`,
-      this.validateAccessToken.bind(this),
-      this.validateSessionDeviceInfo.bind(this),
+      this.validateAccessToken,
       async (req, res) => {
         try {
           const oldPassword = req.body.oldPassword;
@@ -569,13 +577,14 @@ export class RouteGenerator<P, Q, R, S>
         }
       }
     );
-  }
+  };
 
-  createMeRoute(meRoutePersistor: IMeRoutePersistor<S>) {
+  createMeRoute: (meRoutePersistor: IMeRoutePersistor) => ExpressApplication = (
+    meRoutePersistor
+  ) => {
     return this.app.get(
       `${this.config.BASE_PATH}/me`,
-      this.validateAccessToken.bind(this),
-      this.validateSessionDeviceInfo.bind(this),
+      this.validateAccessToken,
       async (req, res) => {
         try {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -617,7 +626,7 @@ export class RouteGenerator<P, Q, R, S>
         }
       }
     );
-  }
+  };
 
   createVerifyEmailRoute: (
     verifyEmailPersistor: IVerifyEmailPersistor

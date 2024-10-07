@@ -1,4 +1,4 @@
-export { RouteGenerator } from './lib/express-auth';
+export { RouteGenerator } from './lib/auth';
 export {
   ISignUpPersistor,
   ILoginPersistor,
@@ -20,3 +20,5 @@ export {
 } from './lib/session-interfaces';
 
 export { MemoryStorage } from './lib/session-storage';
+
+export { initAuth } from './lib/init-auth';
