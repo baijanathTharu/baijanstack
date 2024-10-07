@@ -60,4 +60,6 @@ export function initAuth({
 
   // verify otp route
   routeGenerator.createVerifyOtpRoute(verifyOtpPersistor);
+
+  return routeGenerator;
 }
