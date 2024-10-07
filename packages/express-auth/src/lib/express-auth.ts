@@ -375,7 +375,7 @@ export class RouteGenerator<P, Q, R, S>
   createRefreshRoute(refreshPersistor: IRefreshPersistor<R>) {
     return this.app.post(
       `${this.config.BASE_PATH}/refresh`,
-      this.validateRefreshToken,
+      this.validateRefreshToken.bind(this),
       this.validateSessionDeviceInfo.bind(this),
       async (req, res) => {
         try {
