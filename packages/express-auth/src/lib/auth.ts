@@ -270,6 +270,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       req['accessToken'] = token;
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      req['user'] = isTokenValid;
       next();
     } catch (error) {
       console.error(error);
