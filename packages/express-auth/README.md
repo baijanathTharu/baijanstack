@@ -21,23 +21,81 @@ The route generator takes care of generating the routes for authentication. The 
 
 The following routes are generated for authentication.
 
-- **{BASE_PATH}/signup**: This route handles sign up of new user.
+### {BASE_PATH}/signup
 
-- **{BASE_PATH}/verify-email**: This route is used to verify the email after signing up.
+This route handles sign up of new user.
 
-- **{BASE_PATH}/login**: This route handles login of user.
+> Request Body must have email and password properties:
 
-- **{BASE_PATH}/logout**: This route log outs user from the application.
+```json
+{
+  "email": "baijan@test.com",
+  "password": "baijan",
+  "name": "baijan"
+}
+```
 
-- **{BASE_PATH}/refresh**: This route refreshes the access token and refresh token if refresh token is valid.
+When you sign up, we will hash the password and \*send the email for verification. We will store the hashed password in the storage using the implementation provided.
 
-- **{BASE_PATH}/me**: This route returns the details of logged in user.
+### /verify-email
 
-- **{BASE_PATH}/reset-password**: This route resets the password of the logged in user.
+This route is used to verify the email after signing up.
 
-- **{BASE_PATH}/forgot-password**: This route sends the OTP to change the password.
+> Still in progress
 
-- **{BASE_PATH}/verify-otp**: This route is used to update the password. User must send the new password and OTP obtained in the email.
+### /login
+
+This route handles login of user.
+
+> Request Body must have email and password properties:
+
+```json
+{
+  "email": "baijan@test.com",
+  "password": "baijan"
+}
+```
+
+### /logout
+
+This route log outs user from the application. We will invalidate the refresh token.
+
+### /refresh
+
+This route refreshes the access token and refresh token if refresh token is valid.
+
+### /me
+
+This route returns the details of logged in user.
+
+### /reset-password
+
+This route resets the password of the logged in user.
+
+### /forgot-password
+
+This route sends the OTP to change the password.
+
+> Request Body must have email property:
+
+```json
+{
+  "email": "baijan@test.com"
+}
+```
+
+### /verify-otp
+
+This route is used to update the password. User must send the new password and OTP obtained in the email.
+
+> Request Body must have email and otp properties:
+
+```json
+{
+  "email": "baijan@test.com",
+  "otp": "123456"
+}
+```
 
 ## Usage
 
@@ -333,3 +391,9 @@ app.get('/protected', routerGenerator.validateAccessToken, (req, res) => {
   res.send('Hello World');
 });
 ```
+
+## Collaborators
+
+- [Baijanath Tharu](https://github.com/baijanathTharu)
+- [Santosh Kunwar](https://github.com/codemon77)
+- [Susan Shakya](https://github.com/susan-shakya1)
