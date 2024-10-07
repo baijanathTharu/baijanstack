@@ -9,7 +9,11 @@ export interface ISessionManager {
   storeSession(
     refreshToken: string,
     userEmail: string,
-    deviceInfo: string
+    deviceInfo: string,
+    /**
+     * Time to live in milliseconds
+     */
+    ttlInMs: number
   ): Promise<void>;
 
   /**
@@ -37,7 +41,7 @@ export interface IStorageManager {
   /**
    * Set the session in storage
    */
-  set(key: string, value: string, ttl?: number): Promise<void>;
+  set(key: string, value: string, ttlInMs: number): Promise<void>;
 
   /**
    * Get the session from storage
@@ -77,11 +81,12 @@ export class SessionManager implements ISessionManager {
   async storeSession(
     refreshToken: string,
     userEmail: string,
-    deviceInfo: string
+    deviceInfo: string,
+    ttlInMs: number
   ): Promise<void> {
     const key = `${refreshToken}`;
     const value = `${userEmail}:${deviceInfo}`;
-    await this.storage.set(key, value);
+    await this.storage.set(key, value, ttlInMs);
   }
 
   async getSession(refreshToken: string): Promise<string | null> {

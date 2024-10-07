@@ -56,7 +56,14 @@ export class MemoryStorage implements IStorageManager {
     this.store.delete(key);
     return Promise.resolve();
   }
-  set(key: string, value: string, ttl?: number): Promise<void> {
+  set(
+    key: string,
+    value: string,
+    /**
+     * Time to live in milliseconds
+     */
+    ttl: number
+  ): Promise<void> {
     this.store.set(key, {
       value,
       expiresAt: ttl ? Date.now() + ttl : null,

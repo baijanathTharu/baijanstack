@@ -158,7 +158,8 @@ export class RouteGenerator<P, Q, R, S>
           this.sessionManager.storeSession(
             tokens.refreshToken,
             req.body.email,
-            deviceInfo
+            deviceInfo,
+            this.config.REFRESH_TOKEN_AGE * 1000
           );
         }
 
@@ -433,6 +434,24 @@ export class RouteGenerator<P, Q, R, S>
               },
             ],
           });
+
+          if (this.sessionManager) {
+            const deviceInfo = extractDeviceIdentifier(req);
+            /**
+             * Delete the key from the storage
+             */
+            await this.sessionManager?.deleteSession(refreshToken);
+
+            /**
+             * Create a new session in the storage
+             */
+            this.sessionManager.storeSession(
+              tokens.refreshToken,
+              req.body.email,
+              deviceInfo,
+              this.config.REFRESH_TOKEN_AGE * 1000
+            );
+          }
 
           res.status(200).json({
             message: 'Refreshed token successfully!!',
