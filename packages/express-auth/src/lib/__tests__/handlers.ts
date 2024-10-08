@@ -7,9 +7,8 @@ import {
   IMeRouteHandler,
   IVerifyEmailHandler,
   IForgotPasswordHandler,
-  IForgotPasswordHandler,
+  ISendOtpHandler,
 } from '../auth-interfaces';
-import { INotifyService } from '../session-interfaces';
 
 export type TUser = {
   name: string;
@@ -157,27 +156,33 @@ export class MeRouteHandler implements IMeRouteHandler {
 }
 
 export class VerifyEmailHandler implements IVerifyEmailHandler {
-  errors: { EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string } = {
-    EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION: '',
+  isOtpValid: (email: string, otp: string) => Promise<boolean> = async (
+    email,
+    otp
+  ) => {
+    const user = users.find((user) => user.email === email);
+    if (!user) {
+      return false;
+    }
+    const lastOtp = user.otps[user.otps.length - 1];
+
+    const isOtpMatched = lastOtp?.code === otp;
+
+    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
+
+    return isOtpMatched && !isExpired;
   };
 
-  isEmailEligibleForVerification: (email: string) => Promise<boolean> = async (
+  isEmailAlreadyVerified: (email: string) => Promise<boolean> = async (
     email
   ) => {
     const user = users.find((user) => user.email === email);
 
     return !user?.is_email_verified;
   };
-
-  sendVerificationEmail: (input: {
-    email: string;
-    verificationPath: string;
-  }) => Promise<void> = async (input) => {
-    console.log('sendVerificationEmail Input', input);
-  };
 }
 
-export class ForgotPasswordHandler implements IForgotPasswordHandler {
+export class SendOtpHandler implements ISendOtpHandler {
   doesUserExists: (email: string) => Promise<boolean> = async (email) => {
     const user = users.find((user) => user.email === email);
     return !!user;
@@ -193,16 +198,9 @@ export class ForgotPasswordHandler implements IForgotPasswordHandler {
     }
     users[userIdx].otps.push(otp);
   };
-
-  sendOtp: (
-    email: string,
-    otp: { code: string; generatedAt: number }
-  ) => Promise<void> = async (email, otp) => {
-    console.log('sendOtp', email, otp);
-  };
 }
 
-export class VerifyOtpHandler implements IForgotPasswordHandler {
+export class ForgotPasswordHandler implements IForgotPasswordHandler {
   isOtpValid: (email: string, otp: string) => Promise<boolean> = async (
     email,
     otp
@@ -213,16 +211,11 @@ export class VerifyOtpHandler implements IForgotPasswordHandler {
     }
     const lastOtp = user.otps[user.otps.length - 1];
 
-    if (!lastOtp) {
-      return false;
-    }
+    const isOtpMatched = lastOtp?.code === otp;
 
-    if (lastOtp.code !== otp) {
-      return false;
-    }
+    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
 
-    const isExpired = lastOtp.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
-    return !isExpired;
+    return isOtpMatched && !isExpired;
   };
 
   saveNewPassword: (email: string, password: string) => Promise<void> = async (
@@ -235,12 +228,4 @@ export class VerifyOtpHandler implements IForgotPasswordHandler {
     }
     users[userIdx].password = password;
   };
-}
-
-export class EmailNotificationService implements INotifyService {
-  async notify(type: 'TOKEN_STOLEN', email: string): Promise<void> {
-    if (type === 'TOKEN_STOLEN') {
-      console.log(`Notifying | ${type} | Email: ${email}`);
-    }
-  }
 }

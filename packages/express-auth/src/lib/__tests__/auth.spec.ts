@@ -12,9 +12,9 @@ import {
   MeRouteHandler,
   RefreshHandler,
   ResetPasswordHandler,
+  SendOtpHandler,
   SignUpHandler,
   VerifyEmailHandler,
-  VerifyOtpHandler,
 } from './handlers';
 import { EmailNotificationService } from './notifier';
 
@@ -51,7 +51,7 @@ describe('expressAuth', () => {
       meRouteHandler: new MeRouteHandler(),
       verifyEmailHandler: new VerifyEmailHandler(),
       forgotPasswordHandler: new ForgotPasswordHandler(),
-      verifyOtpHandler: new VerifyOtpHandler(),
+      sendOtpHandler: new SendOtpHandler(),
     });
   });
 

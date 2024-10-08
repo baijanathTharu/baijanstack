@@ -1,9 +1,16 @@
 import { INotifyService } from '../session-interfaces';
 
 export class EmailNotificationService implements INotifyService {
-  async notify(type: 'TOKEN_STOLEN', email: string): Promise<void> {
-    if (type === 'TOKEN_STOLEN') {
-      console.log(`Notifying ... ${email}`);
-    }
+  async sendTokenStolen(email: string): Promise<void> {
+    console.log(`Notifying | TOKEN_STOLEN | Email: ${email}`);
+  }
+  async sendOtp(
+    email: string,
+    payload: { code: string; generatedAt: number }
+  ): Promise<void> {
+    console.log(`Notifying | OTP | Email: ${email}`, payload);
+  }
+  async notifyEmailVerified(email: string): Promise<void> {
+    console.log(`Notifying | EMAIL_VERIFIED | Email: ${email}`);
   }
 }
