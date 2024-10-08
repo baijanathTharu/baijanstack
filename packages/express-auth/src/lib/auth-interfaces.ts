@@ -132,28 +132,15 @@ export interface IMeRouteHandler {
 }
 
 export interface IVerifyEmailHandler {
-  errors: {
-    /**
-     * Message that will be returned if email is not eligible for verification
-     */
-    EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string;
-  };
-
   /**
    * Check the storage to see if user's email is already verified
    */
-  isEmailEligibleForVerification: (email: string) => Promise<boolean>;
+  isEmailAlreadyVerified: (email: string) => Promise<boolean>;
 
   /**
-   * Send verification email to the user
+   * Check the storage if otp is valid
    */
-  sendVerificationEmail: (input: {
-    email: string;
-    /**
-     * Path where the user will be redirected after clicking on the verification link
-     */
-    verificationPath: string;
-  }) => Promise<void>;
+  isOtpValid: (email: string, otp: string) => Promise<boolean>;
 }
 
 export interface ISendOtpHandler {
@@ -170,20 +157,6 @@ export interface ISendOtpHandler {
     otp: {
       code: string;
       generatedAt: number; // timestamp in seconds
-    }
-  ) => Promise<void>;
-
-  /**
-   * Send otp to the user
-   */
-  sendOtp: (
-    email: string,
-    otp: {
-      code: string;
-      /**
-       * timestamp in seconds
-       */
-      generatedAt: number;
     }
   ) => Promise<void>;
 }

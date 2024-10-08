@@ -60,15 +60,25 @@ export interface IStorageManager {
  */
 export interface INotifyService {
   /**
-   * Send a notification
+   * Send a notification to the user informing about stolen token
    */
-  notify(
-    /**
-     * The type of notification
-     */
-    type: 'TOKEN_STOLEN',
-    email: string
+  sendTokenStolen(email: string): Promise<void>;
+
+  /**
+   * Send otp to the user
+   */
+  sendOtp(
+    email: string,
+    payload: {
+      code: string;
+      /**
+       * timestamp in seconds
+       */
+      generatedAt: number;
+    }
   ): Promise<void>;
+
+  notifyEmailVerified(email: string): Promise<void>;
 }
 
 export class SessionManager implements ISessionManager {

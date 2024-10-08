@@ -367,7 +367,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             refreshToken
           );
           if (userEmail) {
-            this.notifyService.notify('TOKEN_STOLEN', userEmail);
+            this.notifyService.sendTokenStolen(userEmail);
           }
           await this.sessionManager.deleteSession(refreshToken);
           return res.status(401).json({ message: 'Unauthorized device.' });
@@ -640,6 +640,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       async (req, res, next) => {
         try {
           const email = req.body.email;
+          const otp = req.body.otp;
 
           if (typeof email !== 'string') {
             res.status(400).json({
@@ -648,28 +649,36 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          // validate if email is eligible for verification
-          const isEligibleForVerification =
-            await verifyEmailHandler.isEmailEligibleForVerification(email);
-
-          if (!isEligibleForVerification) {
+          if (typeof otp !== 'string') {
             res.status(400).json({
-              message:
-                verifyEmailHandler.errors.EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION ||
-                'Email is already verified',
+              message: 'OTP invalid or not sent from the client',
             });
             return;
           }
 
-          const path = this.generateEmailVerificationPath(email);
+          const isEmailAlreadyVerified =
+            await verifyEmailHandler.isEmailAlreadyVerified(email);
 
-          await verifyEmailHandler.sendVerificationEmail({
-            email,
-            verificationPath: path,
-          });
+          if (!isEmailAlreadyVerified) {
+            res.status(400).json({
+              message: 'Email is already verified',
+            });
+            return;
+          }
+
+          const isOtpValid = await verifyEmailHandler.isOtpValid(email, otp);
+
+          if (!isOtpValid) {
+            res.status(400).json({
+              message: 'OTP is invalid',
+            });
+            return;
+          }
+
+          this.notifyService.notifyEmailVerified(email);
 
           res.status(200).json({
-            message: 'Verification email sent successfully',
+            message: 'Email verified successfully',
           });
         } catch (error) {
           console.error(error);
@@ -711,7 +720,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
             await sendOtpHandler.saveOtp(email, otp);
 
-            sendOtpHandler.sendOtp(email, {
+            this.notifyService.sendOtp(email, {
               code: otp.code,
               generatedAt: otp.generatedAt,
             });
@@ -795,19 +804,6 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         }
       }
     );
-  };
-
-  private generateEmailVerificationPath = (email: string): string => {
-    const tokens = generateTokens(
-      { email },
-      {
-        ACCESS_TOKEN_AGE: this.config.EMAIL_VERIFICATION_TOKEN_AGE,
-        REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
-        tokenSecret: this.config.TOKEN_SECRET,
-      }
-    );
-
-    return `${this.config.BASE_PATH}/verify-email?token=${tokens.accessToken}`;
   };
 
   private generateOTP = () => {
