@@ -21,7 +21,7 @@ The route generator takes care of generating the routes for authentication. The 
 
 The following routes are generated for authentication.
 
-### {BASE_PATH}/signup
+### /signup
 
 This route handles sign up of new user.
 
@@ -37,13 +37,22 @@ This route handles sign up of new user.
 
 When you sign up, we will hash the password and \*send the email for verification. We will store the hashed password in the storage using the implementation provided.
 
-### /verify-email
+### POST /verify-email
 
 This route is used to verify the email after signing up.
 
-> Still in progress
+> Note: Before making request to this route, you need to make a request to `/send-otp` route to send the OTP.
 
-### /login
+> Request Body must have email and otp properties:
+
+```json
+{
+  "email": "baijan@test.com",
+  "otp": "123456"
+}
+```
+
+### POST /login
 
 This route handles login of user.
 
@@ -56,44 +65,46 @@ This route handles login of user.
 }
 ```
 
-### /logout
+### POST /logout
 
 This route log outs user from the application. We will invalidate the refresh token.
 
-### /refresh
+### POST /refresh
 
 This route refreshes the access token and refresh token if refresh token is valid.
 
-### /me
+### GET /me
 
 This route returns the details of logged in user.
 
-### /reset-password
+### POST /reset-password
 
 This route resets the password of the logged in user.
 
-### /forgot-password
+### POST /forgot-password
 
-This route sends the OTP to change the password.
+This route is used to change the password of the logged in user.
+
+> Note: Before making request to this route, you need to make a request to `/send-otp` route to send the OTP.
+
+> Request Body must have email property:
+
+```json
+{
+  "email": "baijan@test.com",
+  "otp": "123456"
+}
+```
+
+### /send-otp
+
+This route is used to update the password. User must send the new password and OTP obtained in the email.
 
 > Request Body must have email property:
 
 ```json
 {
   "email": "baijan@test.com"
-}
-```
-
-### /verify-otp
-
-This route is used to update the password. User must send the new password and OTP obtained in the email.
-
-> Request Body must have email and otp properties:
-
-```json
-{
-  "email": "baijan@test.com",
-  "otp": "123456"
 }
 ```
 
@@ -120,16 +131,21 @@ const authConfig: TConfig = {
 };
 ```
 
-- Implement the `INotifyService` for sending notifications.
+- Implement the `INotifyService` for sending notifications. We will use `EmailNotificationService` for sending notifications for different events such as `TOKEN_STOLEN`, `OTP` and `EMAIL_VERIFIED`.
 
 ```ts
+// notifier.ts
 import { INotifyService } from '@baijanstack/express-auth';
 
 export class EmailNotificationService implements INotifyService {
-  async notify(type: 'TOKEN_STOLEN', email: string): Promise<void> {
-    if (type === 'TOKEN_STOLEN') {
-      console.log(`Notifying ... ${email}`);
-    }
+  async sendTokenStolen(email: string): Promise<void> {
+    console.log(`Notifying | TOKEN_STOLEN | Email: ${email}`);
+  }
+  async sendOtp(email: string, payload: { code: string; generatedAt: number }): Promise<void> {
+    console.log(`Notifying | OTP | Email: ${email}`, payload);
+  }
+  async notifyEmailVerified(email: string): Promise<void> {
+    console.log(`Notifying | EMAIL_VERIFIED | Email: ${email}`);
   }
 }
 ```
@@ -154,6 +170,8 @@ import { initAuth } from '@baijanstack/express-auth';
 
 initAuth({
   routeGenerator,
+  // ... need to import all the handlers from
+  // `handlers.ts` file that we will make in next section
   signUpHandler: new SignUpHandler(),
   loginHandler: new LoginHandler(),
   logoutHandler: new LogoutHandler(),
@@ -172,8 +190,11 @@ I will show you how to implement these handlers in the next section using in-mem
 
 > **Note**: You can see an implementation of the handlers using prisma in [Sample Auth Example](https://github.com/baijanathTharu/sample-auth-example).
 
+### In-memory handlers
+
 ```ts
-import { ISignUpHandler, ILoginHandler, ILogoutHandler, IRefreshHandler, IResetPasswordHandler, IMeRouteHandler, IVerifyEmailHandler, IForgotPasswordHandler, IVerifyOtpHandler } from '@baijanstack/express-auth';
+// handlers.ts
+import { ISignUpHandler, ILoginHandler, ILogoutHandler, IRefreshHandler, IResetPasswordHandler, IMeRouteHandler, IVerifyEmailHandler, IForgotPasswordHandler, ISendOtpHandler } from '@baijanstack/express-auth';
 
 export type TUser = {
   name: string;
@@ -315,22 +336,28 @@ export class MeRouteHandler implements IMeRouteHandler {
 }
 
 export class VerifyEmailHandler implements IVerifyEmailHandler {
-  errors: { EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION?: string } = {
-    EMAIL_NOT_ELIGIBLE_FOR_VERIFICATION: '',
+  isOtpValid: (email: string, otp: string) => Promise<boolean> = async (email, otp) => {
+    const user = users.find((user) => user.email === email);
+    if (!user) {
+      return false;
+    }
+    const lastOtp = user.otps[user.otps.length - 1];
+
+    const isOtpMatched = lastOtp?.code === otp;
+
+    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
+
+    return isOtpMatched && !isExpired;
   };
 
-  isEmailEligibleForVerification: (email: string) => Promise<boolean> = async (email) => {
+  isEmailAlreadyVerified: (email: string) => Promise<boolean> = async (email) => {
     const user = users.find((user) => user.email === email);
 
     return !user?.is_email_verified;
   };
-
-  sendVerificationEmail: (input: { email: string; verificationPath: string }) => Promise<void> = async (input) => {
-    console.log('sendVerificationEmail Input', input);
-  };
 }
 
-export class ForgotPasswordHandler implements IForgotPasswordHandler {
+export class SendOtpHandler implements ISendOtpHandler {
   doesUserExists: (email: string) => Promise<boolean> = async (email) => {
     const user = users.find((user) => user.email === email);
     return !!user;
@@ -343,13 +370,9 @@ export class ForgotPasswordHandler implements IForgotPasswordHandler {
     }
     users[userIdx].otps.push(otp);
   };
-
-  sendOtp: (email: string, otp: { code: string; generatedAt: number }) => Promise<void> = async (email, otp) => {
-    console.log('sendOtp', email, otp);
-  };
 }
 
-export class VerifyOtpHandler implements IVerifyOtpHandler {
+export class ForgotPasswordHandler implements IForgotPasswordHandler {
   isOtpValid: (email: string, otp: string) => Promise<boolean> = async (email, otp) => {
     const user = users.find((user) => user.email === email);
     if (!user) {
@@ -357,16 +380,11 @@ export class VerifyOtpHandler implements IVerifyOtpHandler {
     }
     const lastOtp = user.otps[user.otps.length - 1];
 
-    if (!lastOtp) {
-      return false;
-    }
+    const isOtpMatched = lastOtp?.code === otp;
 
-    if (lastOtp.code !== otp) {
-      return false;
-    }
+    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
 
-    const isExpired = lastOtp.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
-    return !isExpired;
+    return isOtpMatched && !isExpired;
   };
 
   saveNewPassword: (email: string, password: string) => Promise<void> = async (email, password) => {
