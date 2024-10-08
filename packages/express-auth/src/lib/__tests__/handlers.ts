@@ -7,7 +7,7 @@ import {
   IMeRouteHandler,
   IVerifyEmailHandler,
   IForgotPasswordHandler,
-  IVerifyOtpHandler,
+  IForgotPasswordHandler,
 } from '../auth-interfaces';
 import { INotifyService } from '../session-interfaces';
 
@@ -202,7 +202,7 @@ export class ForgotPasswordHandler implements IForgotPasswordHandler {
   };
 }
 
-export class VerifyOtpHandler implements IVerifyOtpHandler {
+export class VerifyOtpHandler implements IForgotPasswordHandler {
   isOtpValid: (email: string, otp: string) => Promise<boolean> = async (
     email,
     otp

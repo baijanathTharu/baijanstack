@@ -13,7 +13,6 @@ import {
   verifyToken,
 } from '../utils';
 import {
-  IForgotPasswordHandler,
   ILoginHandler,
   ILogoutHandler,
   IMeRouteHandler,
@@ -23,8 +22,9 @@ import {
   IRouteMiddlewares,
   ISignUpHandler,
   IVerifyEmailHandler,
-  IVerifyOtpHandler,
+  IForgotPasswordHandler,
   TConfig,
+  ISendOtpHandler,
 } from './auth-interfaces';
 import { INotifyService, SessionManager } from './session-interfaces';
 import { MemoryStorage } from './session-storage';
@@ -681,62 +681,59 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     );
   };
 
+  createSendOtpRoute: (sendOtpHandler: ISendOtpHandler) => ExpressApplication =
+    (sendOtpHandler) => {
+      return this.app.post(
+        `${this.config.BASE_PATH}/send-otp`,
+        async (req, res, next) => {
+          try {
+            const email = req.body.email;
+
+            if (typeof email !== 'string') {
+              res.status(400).json({
+                message: 'Email invalid or not sent from the client',
+              });
+              return;
+            }
+
+            // validate if email is eligible for verification
+            const doesUserExists = await sendOtpHandler.doesUserExists(email);
+
+            if (!doesUserExists) {
+              res.status(400).json({
+                message:
+                  "User with that email doesn't exist. Please create an account",
+              });
+              return;
+            }
+
+            const otp = this.generateOTP();
+
+            await sendOtpHandler.saveOtp(email, otp);
+
+            sendOtpHandler.sendOtp(email, {
+              code: otp.code,
+              generatedAt: otp.generatedAt,
+            });
+
+            res.status(200).json({
+              message: 'OTP sent successfully',
+            });
+          } catch (error) {
+            console.error(error);
+            res.status(500).json({
+              message: 'Internal server error',
+            });
+          }
+        }
+      );
+    };
+
   createForgotPasswordRoute: (
     forgotPasswordHandler: IForgotPasswordHandler
   ) => ExpressApplication = (forgotPasswordHandler) => {
     return this.app.post(
       `${this.config.BASE_PATH}/forgot-password`,
-      async (req, res, next) => {
-        try {
-          const email = req.body.email;
-
-          if (typeof email !== 'string') {
-            res.status(400).json({
-              message: 'Email invalid or not sent from the client',
-            });
-            return;
-          }
-
-          // validate if email is eligible for verification
-          const doesUserExists = await forgotPasswordHandler.doesUserExists(
-            email
-          );
-
-          if (!doesUserExists) {
-            res.status(400).json({
-              message:
-                "User with that email doesn't exist. Please create an account",
-            });
-            return;
-          }
-
-          const otp = this.generateOTP();
-
-          await forgotPasswordHandler.saveOtp(email, otp);
-
-          forgotPasswordHandler.sendOtp(email, {
-            code: otp.code,
-            generatedAt: otp.generatedAt,
-          });
-
-          res.status(200).json({
-            message: 'OTP sent successfully',
-          });
-        } catch (error) {
-          console.error(error);
-          res.status(500).json({
-            message: 'Internal server error',
-          });
-        }
-      }
-    );
-  };
-
-  createVerifyOtpRoute: (
-    verifyOtpHandler: IVerifyOtpHandler
-  ) => ExpressApplication = (verifyOtpHandler) => {
-    return this.app.post(
-      `${this.config.BASE_PATH}/verify-otp`,
       async (req, res, next) => {
         try {
           const email = req.body.email;
@@ -764,7 +761,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          const isOtpValid = await verifyOtpHandler.isOtpValid(email, otp);
+          const isOtpValid = await forgotPasswordHandler.isOtpValid(email, otp);
 
           if (!isOtpValid) {
             res.status(400).json({
@@ -785,10 +782,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          await verifyOtpHandler.saveNewPassword(email, hashedPassword);
+          await forgotPasswordHandler.saveNewPassword(email, hashedPassword);
 
           res.status(200).json({
-            message: 'OTP verified successfully',
+            message: 'Password changed successfully',
           });
         } catch (error) {
           console.error(error);
@@ -800,7 +797,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     );
   };
 
-  private generateEmailVerificationPath(email: string): string {
+  private generateEmailVerificationPath = (email: string): string => {
     const tokens = generateTokens(
       { email },
       {
@@ -811,9 +808,9 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     );
 
     return `${this.config.BASE_PATH}/verify-email?token=${tokens.accessToken}`;
-  }
+  };
 
-  private generateOTP() {
+  private generateOTP = () => {
     const code = `${Math.floor(100000 + Math.random() * 900000)}`;
     const generatedAt = Date.now() / 1000;
 
@@ -821,5 +818,5 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       code,
       generatedAt,
     };
-  }
+  };
 }

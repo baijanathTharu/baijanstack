@@ -156,7 +156,7 @@ export interface IVerifyEmailHandler {
   }) => Promise<void>;
 }
 
-export interface IForgotPasswordHandler {
+export interface ISendOtpHandler {
   /**
    * Check the storage to see if user exists or not
    */
@@ -188,7 +188,7 @@ export interface IForgotPasswordHandler {
   ) => Promise<void>;
 }
 
-export interface IVerifyOtpHandler {
+export interface IForgotPasswordHandler {
   /**
    * Check the storage to see if otp is valid
    */
@@ -212,11 +212,9 @@ export interface IRouteGenerator {
   createVerifyEmailRoute: (
     verifyEmailPersistor: IVerifyEmailHandler
   ) => ExpressApplication;
+  createSendOtpRoute: (sendOtpPersistor: ISendOtpHandler) => ExpressApplication;
   createForgotPasswordRoute: (
-    forgotPasswordPersistor: IForgotPasswordHandler
-  ) => ExpressApplication;
-  createVerifyOtpRoute: (
-    verifyOtpPersistor: IVerifyOtpHandler
+    forgotPasswordHandler: IForgotPasswordHandler
   ) => ExpressApplication;
 }
 

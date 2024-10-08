@@ -7,7 +7,7 @@ import {
   IResetPasswordHandler,
   ISignUpHandler,
   IVerifyEmailHandler,
-  IVerifyOtpHandler,
+  IForgotPasswordHandler,
 } from './auth-interfaces';
 import { RouteGenerator } from './auth';
 
@@ -32,7 +32,7 @@ export function initAuth({
   meRouteHandler: IMeRouteHandler;
   verifyEmailHandler: IVerifyEmailHandler;
   forgotPasswordHandler: IForgotPasswordHandler;
-  verifyOtpHandler: IVerifyOtpHandler;
+  verifyOtpHandler: IForgotPasswordHandler;
 }) {
   // sign up route
   routeGenerator.createSignUpRoute(signUpHandler);
