@@ -8,7 +8,7 @@ export {
   IMeRouteHandler,
   IVerifyEmailHandler,
   IForgotPasswordHandler,
-  IForgotPasswordHandler as IVerifyOtpHandler,
+  ISendOtpHandler,
   TConfig,
 } from './lib/auth-interfaces';
 
