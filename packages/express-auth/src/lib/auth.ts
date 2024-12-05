@@ -174,6 +174,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
               'You are not allowed to login because your email is not verified!',
             code: LoginResponseCodes.EMAIL_NOT_VERIFIED,
           });
+          return;
         }
 
         const payload = await loginHandler.getTokenPayload(req.body.email);
