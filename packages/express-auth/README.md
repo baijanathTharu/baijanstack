@@ -1,7 +1,5 @@
 # express-auth
 
-> ! This library is under active development. Please do not use it in production.
-
 This is an authentication library for express. It uses email-password authentication flow for authentication.
 
 ## Motivation

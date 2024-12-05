@@ -72,6 +72,10 @@ export class LoginHandler implements ILoginHandler {
     PASSWORD_OR_EMAIL_INCORRECT: 'Password or email incorrect',
   };
 
+  canLogin: (email: string) => Promise<boolean> = async () => {
+    return true;
+  };
+
   getTokenPayload: (email: string) => Promise<{
     name: string;
     email: string;

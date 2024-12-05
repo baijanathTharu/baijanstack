@@ -76,6 +76,12 @@ export interface ILoginHandler {
   };
 
   /**
+   * Decide if user can login or not
+   * For e.g. in case of email not verified do not allow
+   */
+  canLogin: (email: string) => Promise<boolean>;
+
+  /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
   getTokenPayload: (email: string) => Promise<any>;

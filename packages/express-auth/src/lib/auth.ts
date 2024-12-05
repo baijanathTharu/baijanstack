@@ -125,6 +125,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           return;
         }
 
+        const canLogin = await loginHandler.canLogin(req.body.email);
+        if (!canLogin) {
+          res.status(400).json({
+            message: 'You are not allowed to login.',
+          });
+        }
+
         const user = await loginHandler.getUserByEmail(req.body.email);
 
         if (!user) {
