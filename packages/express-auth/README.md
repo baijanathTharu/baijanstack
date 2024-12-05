@@ -25,11 +25,22 @@ This route handles sign up of new user.
 
 > Request Body must have email and password properties:
 
+## Request
+
 ```json
 {
   "email": "baijan@test.com",
   "password": "baijan",
   "name": "baijan"
+}
+```
+
+## Response
+
+```ts
+{
+  message: string;
+  code: TSignUpResponseCodes;
 }
 ```
 
@@ -41,6 +52,8 @@ This route is used to verify the email after signing up.
 
 > Note: Before making request to this route, you need to make a request to `/send-otp` route to send the OTP.
 
+## Request
+
 > Request Body must have email and otp properties:
 
 ```json
@@ -50,11 +63,22 @@ This route is used to verify the email after signing up.
 }
 ```
 
+## Response
+
+```ts
+{
+  message: string;
+  code: TVerifyEmailResponseCodes;
+}
+```
+
 ### POST /login
 
 This route handles login of user.
 
 > Request Body must have email and password properties:
+
+## Request
 
 ```json
 {
@@ -63,46 +87,133 @@ This route handles login of user.
 }
 ```
 
+## Response
+
+```ts
+{
+  message: string;
+  code: TLoginResponseCodes;
+}
+```
+
 ### POST /logout
 
 This route log outs user from the application. We will invalidate the refresh token.
+
+## Response
+
+```ts
+{
+  message: string;
+  code: TLogoutResponseCodes;
+}
+```
 
 ### POST /refresh
 
 This route refreshes the access token and refresh token if refresh token is valid.
 
+## Response
+
+```ts
+{
+  message: string;
+  code: TRefreshResponseCodes;
+}
+```
+
 ### GET /me
 
 This route returns the details of logged in user.
+
+## Response
+
+```ts
+{
+  message: string;
+  code: TMeResponseCodes;
+  accessToken: string;
+  data: {
+    me: any; // data of logged in user: name, email
+    token: {
+      name: string;
+      email: string;
+      iat: number;
+      exp: number;
+    }
+  }
+}
+```
 
 ### POST /reset-password
 
 This route resets the password of the logged in user.
 
+## Request
+
+```json
+{
+  "oldPassword": "old_password",
+  "newPassword": "new_password"
+}
+```
+
+## Response
+
+```ts
+{
+  message: string;
+  code: TResetPasswordResponseCodes;
+}
+```
+
 ### POST /forgot-password
 
-This route is used to change the password of the logged in user.
+This route is used to change the password of the logged out user.
 
-> Note: Before making request to this route, you need to make a request to `/send-otp` route to send the OTP.
+> Note: Before making request to this route, you need to make a request to `/send-otp` route to get the OTP.
 
 > Request Body must have email property:
+
+## Request
 
 ```json
 {
   "email": "baijan@test.com",
-  "otp": "123456"
+  "otp": "123456",
+  "newPassword": "new_password"
+}
+```
+
+## Response
+
+```ts
+{
+  message: string;
+  code: TForgotPasswordResponseCodes;
 }
 ```
 
 ### POST /send-otp
 
-This route is used to update the password. User must send the new password and OTP obtained in the email.
+This route is used to get an OTP for email verification and changing password.
 
 > Request Body must have email property:
+
+## Request
 
 ```json
 {
   "email": "baijan@test.com"
+}
+```
+
+## Response
+
+```ts
+{
+  message: string;
+  code: TSendOtpResponseCodes;
 }
 ```
 
@@ -123,9 +234,9 @@ const authConfig: TConfig = {
   BASE_PATH: '/v1/auth', // base path for authentication
   SALT_ROUNDS: 10, // number of rounds for password hashing
   TOKEN_SECRET: 'random_secure_secret_value', // secret for token generation
-  ACCESS_TOKEN_AGE: 60000, // age of access token in milliseconds
-  REFRESH_TOKEN_AGE: 240000, // age of refresh token in milliseconds
-  EMAIL_VERIFICATION_TOKEN_AGE: 300000, // age of email verification token in milliseconds
+  ACCESS_TOKEN_AGE: 60, // age of access token in seconds
+  REFRESH_TOKEN_AGE: 240000, // age of refresh token in seconds
+  EMAIL_VERIFICATION_TOKEN_AGE: 300000, // age of email verification token in seconds
 };
 ```
 
@@ -186,7 +297,7 @@ initAuth({
 
 I will show you how to implement these handlers in the next section using in-memory storage.
 
-> **Note**: You can see an implementation of the handlers using prisma in [Sample Auth Example](https://github.com/baijanathTharu/sample-auth-example).
+> **Note**: You can see an implementation of the handlers in the [Test file](https://github.com/baijanathTharu/baijanstack/blob/main/packages/express-auth/src/lib/__tests__/handlers.ts).
 
 ### In-memory handlers
 
@@ -334,7 +445,7 @@ export class MeRouteHandler implements IMeRouteHandler {
 }
 
 export class VerifyEmailHandler implements IVerifyEmailHandler {
-  isOtpValid: (email: string, otp: string) => Promise<boolean> = async (email, otp) => {
+  updateEmailVerificationStatusAndValidateOtp: (email: string, otp: string) => Promise<boolean> = async (email, otp) => {
     const user = users.find((user) => user.email === email);
     if (!user) {
       return false;
@@ -345,7 +456,22 @@ export class VerifyEmailHandler implements IVerifyEmailHandler {
 
     const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
 
-    return isOtpMatched && !isExpired;
+    const isValid = isOtpMatched && !isExpired;
+    if (isValid) {
+      /**
+       * update the `is_email_verified` field
+       */
+      users = users.map((u) => {
+        if (u.email === email) {
+          return {
+            ...u,
+            is_email_verified: true,
+          };
+        }
+        return u;
+      });
+    }
+    return isValid;
   };
 
   isEmailAlreadyVerified: (email: string) => Promise<boolean> = async (email) => {
@@ -406,6 +532,17 @@ app.get('/protected', routerGenerator.validateAccessToken, (req, res) => {
   console.log('Logged in user is:', req.user);
   res.send('Hello World');
 });
+```
+
+> Note: If the middlewares return response, they are in following format:
+
+### Middlewares: `validateAccessToken`, `validateRefreshToken`
+
+```ts
+{
+  message: string;
+  code: TValidateTokenResponseCodes;
+}
 ```
 
 ## Collaborators

@@ -22,3 +22,29 @@ export {
 export { MemoryStorage } from './lib/session-storage';
 
 export { initAuth } from './lib/init-auth';
+
+export {
+  SignUpResponseCodes,
+  LoginResponseCodes,
+  LogoutResponseCodes,
+  RefreshResponseCodes,
+  ResetPasswordResponseCodes,
+  MeResponseCodes,
+  VerifyEmailResponseCodes,
+  SendOtpResponseCodes,
+  ForgotPasswordResponseCodes,
+  ValidateTokenResponseCodes,
+} from './lib/response-codes';
+
+export type {
+  TSignUpResponseCodes,
+  TLoginResponseCodes,
+  TLogoutResponseCodes,
+  TRefreshResponseCodes,
+  TResetPasswordResponseCodes,
+  TMeResponseCodes,
+  TVerifyEmailResponseCodes,
+  TSendOtpResponseCodes,
+  TForgotPasswordResponseCodes,
+  TValidateTokenResponseCodes,
+} from './lib/response-codes';

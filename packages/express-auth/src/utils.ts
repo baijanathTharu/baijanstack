@@ -1,6 +1,11 @@
 import { Response, Request } from 'express';
 import { compare, genSalt, hash } from 'bcryptjs';
-import { sign, verify } from 'jsonwebtoken';
+import {
+  JsonWebTokenError,
+  sign,
+  TokenExpiredError,
+  verify,
+} from 'jsonwebtoken';
 
 export function hashPassword(
   password: string,
@@ -75,13 +80,35 @@ export function verifyToken({
 }: {
   token: string;
   tokenSecret: string;
-}) {
+}):
+  | {
+      code: 'EXPIRED' | 'INVALID' | 'UNKNOWN';
+    }
+  | {
+      code: 'VALID';
+      data: unknown;
+    } {
   try {
     const decoded = verify(token, tokenSecret);
-    return decoded;
+    return {
+      code: 'VALID',
+      data: decoded,
+    };
   } catch (error) {
+    if (error instanceof TokenExpiredError) {
+      return {
+        code: 'EXPIRED',
+      };
+    }
     console.error('token verification error', error);
-    return false;
+    if (error instanceof JsonWebTokenError) {
+      return {
+        code: 'INVALID',
+      };
+    }
+    return {
+      code: 'UNKNOWN',
+    };
   }
 }
 

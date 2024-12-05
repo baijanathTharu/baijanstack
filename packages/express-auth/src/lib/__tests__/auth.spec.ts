@@ -17,6 +17,7 @@ import {
   VerifyEmailHandler,
 } from './handlers';
 import { EmailNotificationService } from './notifier';
+import { LoginResponseCodes, SignUpResponseCodes } from '../response-codes';
 
 const john = {
   name: 'john',
@@ -75,7 +76,8 @@ describe('expressAuth', () => {
       .send({ email: john.email, password: 'john' });
     expect(res.status).toBe(201);
     expect(res.body).toEqual({
-      message: 'User created',
+      message: expect.any(String),
+      code: SignUpResponseCodes.USER_CREATED,
     });
   });
 
@@ -85,7 +87,8 @@ describe('expressAuth', () => {
       .send({ email: john.email, password: 'john' });
     expect(res.status).toBe(409);
     expect(res.body).toEqual({
-      message: 'User already exists',
+      message: expect.any(String),
+      code: SignUpResponseCodes.USER_ALREADY_EXISTS,
     });
   });
 
@@ -109,7 +112,8 @@ describe('expressAuth', () => {
       .send({ email: 'john2@test.com', password: 'john' });
     expect(res.status).toBe(409);
     expect(res.body).toEqual({
-      message: 'Password or email incorrect',
+      message: expect.any(String),
+      code: LoginResponseCodes.PASSWORD_OR_EMAIL_INCORRECT,
     });
   });
 
@@ -119,7 +123,8 @@ describe('expressAuth', () => {
       .send({ email: john.email, password: 'john2' });
     expect(res.status).toBe(409);
     expect(res.body).toEqual({
-      message: 'Password or email incorrect',
+      message: expect.any(String),
+      code: LoginResponseCodes.PASSWORD_OR_EMAIL_INCORRECT,
     });
   });
 
@@ -129,7 +134,8 @@ describe('expressAuth', () => {
       .send({ email: john.email, password: john.password });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
-      message: 'Logged in successfully!!',
+      message: expect.any(String),
+      code: LoginResponseCodes.LOGIN_SUCCESS,
     });
 
     expect(res.header['set-cookie']).toBeDefined();

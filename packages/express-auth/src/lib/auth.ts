@@ -28,6 +28,19 @@ import {
 } from './auth-interfaces';
 import { INotifyService, SessionManager } from './session-interfaces';
 import { MemoryStorage } from './session-storage';
+import {
+  DeviceValidationResponseCodes,
+  ForgotPasswordResponseCodes,
+  LoginResponseCodes,
+  LogoutResponseCodes,
+  MeResponseCodes,
+  RefreshResponseCodes,
+  ResetPasswordResponseCodes,
+  SendOtpResponseCodes,
+  SignUpResponseCodes,
+  ValidateTokenResponseCodes,
+  VerifyEmailResponseCodes,
+} from './response-codes';
 
 export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   constructor(
@@ -57,6 +70,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!req.body.email) {
             res.status(400).json({
               message: 'Email is required',
+              code: SignUpResponseCodes.VALIDATION_FAILED,
             });
             return;
           }
@@ -64,6 +78,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!req.body.password) {
             res.status(400).json({
               message: 'Password is required',
+              code: SignUpResponseCodes.VALIDATION_FAILED,
             });
             return;
           }
@@ -74,11 +89,11 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
               message:
                 signUpHandler.errors.USER_ALREADY_EXISTS_MESSAGE ??
                 'User already exists',
+              code: SignUpResponseCodes.USER_ALREADY_EXISTS,
             });
             return;
           }
 
-          // !FIXME: password validations can be done here
           const [_, hashedPasswordStr] = await hashPassword(
             req.body.password,
             this.config.SALT_ROUNDS
@@ -87,6 +102,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!hashedPasswordStr) {
             res.status(500).json({
               message: 'Failed to hash the password',
+              code: SignUpResponseCodes.PASSWORD_HASH_ERROR,
             });
             return;
           }
@@ -95,11 +111,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           res.status(201).json({
             message: 'User created',
+            code: SignUpResponseCodes.USER_CREATED,
           });
         } catch (error) {
           console.error(error);
           res.status(500).json({
             message: 'Internal server error',
+            code: SignUpResponseCodes.INTERNAL_SERVER_ERROR,
           });
         }
       }
@@ -114,6 +132,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         if (!req.body.email) {
           res.status(400).json({
             message: 'Email is required',
+            code: LoginResponseCodes.VALIDATION_FAILED,
           });
           return;
         }
@@ -121,6 +140,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         if (!req.body.password) {
           res.status(400).json({
             message: 'Password is required',
+            code: LoginResponseCodes.VALIDATION_FAILED,
           });
           return;
         }
@@ -130,6 +150,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         if (!user) {
           res.status(409).json({
             message: loginHandler.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
+            code: LoginResponseCodes.PASSWORD_OR_EMAIL_INCORRECT,
           });
           return;
         }
@@ -142,6 +163,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         if (!isPasswordMatch) {
           res.status(409).json({
             message: loginHandler.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
+            code: LoginResponseCodes.PASSWORD_OR_EMAIL_INCORRECT,
           });
           return;
         }
@@ -150,6 +172,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           res.status(400).json({
             message:
               'You are not allowed to login because your email is not verified!',
+            code: LoginResponseCodes.EMAIL_NOT_VERIFIED,
           });
         }
 
@@ -190,11 +213,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
         res.status(200).json({
           message: 'Logged in successfully!!',
+          code: LoginResponseCodes.LOGIN_SUCCESS,
         });
       } catch (error) {
         console.error(error);
         res.status(500).json({
           message: 'Internal server error',
+          code: LoginResponseCodes.INTERNAL_SERVER_ERROR,
         });
       }
     });
@@ -233,11 +258,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
             res.status(200).json({
               message: 'Logged out successfully!!',
+              code: LogoutResponseCodes.LOGOUT_SUCCESS,
             });
           } catch (error) {
             console.error(error);
             res.status(500).json({
               message: 'Internal server error',
+              code: LogoutResponseCodes.INTERNAL_SERVER_ERROR,
             });
           }
         }
@@ -250,6 +277,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       if (!cookies) {
         res.status(400).json({
           message: 'Cookies are not sent from the client',
+          code: ValidateTokenResponseCodes.MISSING_TOKEN,
         });
         return;
       }
@@ -257,35 +285,53 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       if (!token) {
         res.status(400).json({
           message: 'Access token not found in the cookie',
+          code: ValidateTokenResponseCodes.MISSING_TOKEN,
         });
         return;
       }
 
       // check if token is valid or not
-      const isTokenValid = verifyToken({
+      const validatedToken = verifyToken({
         token,
         tokenSecret: this.config.TOKEN_SECRET,
       });
-      if (!isTokenValid) {
+      if (validatedToken.code === 'EXPIRED') {
+        res.status(400).json({
+          message: 'Access Token is expired',
+          code: ValidateTokenResponseCodes.EXPIRED_TOKEN,
+        });
+        return;
+      }
+
+      if (validatedToken.code === 'INVALID') {
         res.status(400).json({
           message: 'Access Token is invalid',
+          code: ValidateTokenResponseCodes.INVALID_TOKEN,
+        });
+        return;
+      }
+
+      if (validatedToken.code === 'UNKNOWN') {
+        res.status(400).json({
+          message: 'Access Token is invalid',
+          code: ValidateTokenResponseCodes.INVALID_TOKEN,
         });
         return;
       }
 
       // token is valid, call the next middleware
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // @ts-expect-error adding the token to the request
       req['accessToken'] = token;
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      req['user'] = isTokenValid;
+      // @ts-expect-error adding the token payload to the request
+      req['decodedAccessToken'] =
+        validatedToken.code === 'VALID' ? validatedToken.data : null;
       next();
     } catch (error) {
       console.error(error);
       res.status(500).json({
         message: 'Internal server error',
+        code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
       });
       return;
     }
@@ -297,6 +343,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       if (!cookies) {
         res.status(400).json({
           message: 'Cookies are not sent from the client',
+          code: ValidateTokenResponseCodes.MISSING_TOKEN,
         });
         return;
       }
@@ -304,31 +351,52 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       if (!token) {
         res.status(400).json({
           message: 'Refresh Token not found in the cookie',
+          code: ValidateTokenResponseCodes.MISSING_TOKEN,
         });
         return;
       }
 
       // check if token is valid or not
-      const isTokenValid = verifyToken({
+      const validatedToken = verifyToken({
         token,
         tokenSecret: this.config.TOKEN_SECRET,
       });
-      if (!isTokenValid) {
+      if (validatedToken.code === 'EXPIRED') {
+        res.status(400).json({
+          message: 'Token is expired',
+          code: ValidateTokenResponseCodes.INVALID_TOKEN,
+        });
+        return;
+      }
+
+      if (validatedToken.code === 'INVALID') {
         res.status(400).json({
           message: 'Token is invalid',
+          code: ValidateTokenResponseCodes.INVALID_TOKEN,
+        });
+        return;
+      }
+
+      if (validatedToken.code === 'UNKNOWN') {
+        res.status(400).json({
+          message: 'Token is invalid',
+          code: ValidateTokenResponseCodes.INVALID_TOKEN,
         });
         return;
       }
 
       // token is valid, call the next middleware
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // @ts-expect-error adding the token to the request
       req['refreshToken'] = token;
+      // @ts-expect-error adding the token payload on the request
+      req['decodedRefreshToken'] =
+        validatedToken.code === 'VALID' ? validatedToken.data : null;
       next();
     } catch (error) {
       console.error(error);
       res.status(500).json({
         message: 'Internal server error',
+        code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
       });
       return;
     }
@@ -343,14 +411,16 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     const deviceInfo = extractDeviceIdentifier(req);
 
     if (!refreshToken) {
-      return res
-        .status(401)
-        .json({ message: 'Unauthorized: Missing refresh token.' });
+      return res.status(401).json({
+        message: 'Unauthorized: Missing refresh token.',
+        code: DeviceValidationResponseCodes.MISSING_DEVICE_TOKEN,
+      });
     }
 
     if (!deviceInfo) {
       return res.status(401).json({
         message: 'Unauthorized: Missing device info',
+        code: DeviceValidationResponseCodes.MISSING_DEVICE_INFO,
       });
     }
 
@@ -359,9 +429,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         const session = await this.sessionManager.getSession(refreshToken);
 
         if (!session) {
-          return res
-            .status(401)
-            .json({ message: 'Unauthorized: Session not found' });
+          return res.status(401).json({
+            message: 'Unauthorized: Session not found',
+            code: DeviceValidationResponseCodes.SESSION_NOT_FOUND,
+          });
         }
 
         const isValidDevice = await this.sessionManager.verifyDevice(
@@ -377,7 +448,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             this.notifyService.sendTokenStolen(userEmail);
           }
           await this.sessionManager.deleteSession(refreshToken);
-          return res.status(401).json({ message: 'Unauthorized device.' });
+          return res.status(401).json({
+            message: 'Unauthorized device.',
+            code: DeviceValidationResponseCodes.UNAUTHORIZED_DEVICE,
+          });
         }
       }
 
@@ -385,7 +459,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       return;
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ message: 'Internal server error' });
+      return res.status(500).json({
+        message: 'Internal server error',
+        code: DeviceValidationResponseCodes.INTERNAL_SERVER_ERROR,
+      });
     }
   };
 
@@ -397,41 +474,29 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         this.validateSessionDeviceInfo,
         async (req, res) => {
           try {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-expect-error
+            // @ts-expect-error have been attached on the request
             const refreshToken = req['refreshToken'] as string;
 
-            // validate the refreshToken
-            const decodedToken = await verifyToken({
-              token: refreshToken,
-              tokenSecret: this.config.TOKEN_SECRET,
-            });
+            // @ts-expect-error have been attached on the request
+            const email = req['decodedRefreshToken']?.email as string;
 
-            if (!decodedToken) {
+            if (!email) {
               res.status(400).json({
-                message:
-                  refreshHandler.errors?.INVALID_REFRESH_TOKEN ||
-                  'Refresh token could not be verified',
+                message: 'Invalid email on the refresh token',
+                code: RefreshResponseCodes.INVALID_PAYLOAD,
               });
               return;
             }
 
-            /**
-             * Generate new access token and refresh token and set on the cookie
-             */
-            if (
-              !(typeof decodedToken === 'object' && 'email' in decodedToken)
-            ) {
+            const payload = await refreshHandler.getTokenPayload(email);
+
+            if (typeof payload !== 'object' || 'email' in payload === false) {
               res.status(400).json({
-                message:
-                  refreshHandler.errors?.INVALID_REFRESH_TOKEN ||
-                  'Decoded token is not an object with email property',
+                message: 'Invalid payload',
+                code: RefreshResponseCodes.INVALID_PAYLOAD,
               });
               return;
             }
-            const payload = await refreshHandler.getTokenPayload(
-              decodedToken['email']
-            );
 
             const tokens = generateTokens(payload, {
               tokenSecret: this.config.TOKEN_SECRET,
@@ -475,11 +540,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
             res.status(200).json({
               message: 'Refreshed token successfully!!',
+              code: RefreshResponseCodes.REFRESH_SUCCESS,
             });
           } catch (error) {
             console.error(error);
             res.status(500).json({
               message: 'Internal server error',
+              code: RefreshResponseCodes.INTERNAL_SERVER_ERROR,
             });
           }
         }
@@ -497,23 +564,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           const oldPassword = req.body.oldPassword;
           const newPassword = req.body.newPassword;
 
-          /**
-           * Get the email from the access token
-           */
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-expect-error
-          const accessToken = req['accessToken'];
-          const decodedToken = await verifyToken({
-            token: accessToken,
-            tokenSecret: this.config.TOKEN_SECRET,
-          });
-
-          if (!decodedToken) {
-            res.status(500).json({
-              message: 'Access token could not be verified',
-            });
-            return;
-          }
+          // @ts-expect-error have been attached on the request
+          const decodedToken = req['decodedAccessToken'];
 
           /**
            * Generate new access token and refresh token and set on the cookie
@@ -521,17 +573,17 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
             res.status(400).json({
               message: 'Decoded token is not an object with email property',
+              code: ResetPasswordResponseCodes.INVALID_PAYLOAD,
             });
             return;
           }
 
-          const email = decodedToken['email'];
+          const email = decodedToken['email'] as string;
 
           const oldPasswordHash = await resetPasswordHandler.getOldPasswordHash(
             email
           );
 
-          // validating the old password
           const [, isOldPasswordValid] = await comparePassword({
             password: oldPassword,
             hashedPassword: oldPasswordHash,
@@ -539,6 +591,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!isOldPasswordValid) {
             res.status(403).json({
               message: 'Old password or username is not valid',
+              code: ResetPasswordResponseCodes.INVALID_OLD_PASSWORD_USERNAME,
             });
             return;
           }
@@ -552,6 +605,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!hashedPassword) {
             res.status(500).json({
               message: 'Password could not be hashed',
+              code: ResetPasswordResponseCodes.PASSWORD_HASH_ERROR,
             });
             return;
           }
@@ -567,23 +621,25 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
               {
                 cookieName: 'x-access-token',
                 cookieValue: '',
-                maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+                maxAge: 0,
               },
               {
                 cookieName: 'x-refresh-token',
                 cookieValue: '',
-                maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+                maxAge: 0,
               },
             ],
           });
 
           res.status(200).json({
             message: 'Password has been reset sucessfully! Please login again',
+            code: ResetPasswordResponseCodes.RESET_PASSWORD_SUCCESS,
           });
         } catch (error) {
           console.error(error);
           res.status(500).json({
             message: 'Internal server error',
+            code: ResetPasswordResponseCodes.INTERNAL_SERVER_ERROR,
           });
         }
       }
@@ -598,25 +654,16 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       this.validateAccessToken,
       async (req, res) => {
         try {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-expect-error
-          const accessToken = req.accessToken;
+          // @ts-expect-error have been attached on the request
+          const accessToken = req['accessToken'];
 
-          const decodedToken = verifyToken({
-            token: accessToken,
-            tokenSecret: this.config.TOKEN_SECRET,
-          });
-
-          if (!decodedToken) {
-            res.status(500).json({
-              message: 'Access token could not be verified',
-            });
-            return;
-          }
+          // @ts-expect-error have been attached on the request
+          const decodedToken = req['decodedAccessToken'];
 
           if (!(typeof decodedToken === 'object' && 'email' in decodedToken)) {
             res.status(400).json({
               message: 'Decoded token is not an object with email property',
+              code: MeResponseCodes.INVALID_PAYLOAD,
             });
             return;
           }
@@ -626,13 +673,19 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           const meData = await meRouteHandler.getMeByEmail(email);
 
           res.status(200).json({
-            data: decodedToken,
-            me: meData,
+            data: {
+              token: decodedToken,
+              me: meData,
+            },
+            accessToken: accessToken,
+            code: MeResponseCodes.ME_SUCCESS,
+            message: 'Success',
           });
         } catch (error) {
           console.error(error);
           res.status(500).json({
             message: 'Internal server error',
+            code: MeResponseCodes.INTERNAL_SERVER_ERROR,
           });
         }
       }
@@ -652,6 +705,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (typeof email !== 'string') {
             res.status(400).json({
               message: 'Email invalid or not sent from the client',
+              code: VerifyEmailResponseCodes.VALIDATION_FAILED,
             });
             return;
           }
@@ -659,6 +713,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (typeof otp !== 'string') {
             res.status(400).json({
               message: 'OTP invalid or not sent from the client',
+              code: VerifyEmailResponseCodes.VALIDATION_FAILED,
             });
             return;
           }
@@ -669,6 +724,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!isEmailAlreadyVerified) {
             res.status(400).json({
               message: 'Email is already verified',
+              code: VerifyEmailResponseCodes.EMAIL_ALREADY_VERIFIED,
             });
             return;
           }
@@ -682,6 +738,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!isOtpValid) {
             res.status(400).json({
               message: 'OTP is invalid',
+              code: VerifyEmailResponseCodes.INVALID_OTP,
             });
             return;
           }
@@ -690,11 +747,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           res.status(200).json({
             message: 'Email verified successfully',
+            code: VerifyEmailResponseCodes.VERIFY_EMAIL_SUCCESS,
           });
         } catch (error) {
           console.error(error);
           res.status(500).json({
             message: 'Internal server error',
+            code: VerifyEmailResponseCodes.INTERNAL_SERVER_ERROR,
           });
         }
       }
@@ -711,7 +770,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
             if (typeof email !== 'string') {
               res.status(400).json({
-                message: 'Email invalid or not sent from the client',
+                message: 'Email is required',
+                code: SendOtpResponseCodes.VALIDATION_FAILED,
               });
               return;
             }
@@ -723,6 +783,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
               res.status(400).json({
                 message:
                   "User with that email doesn't exist. Please create an account",
+                code: SendOtpResponseCodes.USER_NOT_FOUND,
               });
               return;
             }
@@ -738,11 +799,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
             res.status(200).json({
               message: 'OTP sent successfully',
+              code: SendOtpResponseCodes.SEND_OTP_SUCCESS,
             });
           } catch (error) {
             console.error(error);
             res.status(500).json({
               message: 'Internal server error',
+              code: SendOtpResponseCodes.INTERNAL_SERVER_ERROR,
             });
           }
         }
@@ -762,21 +825,24 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           if (typeof email !== 'string') {
             res.status(400).json({
-              message: 'Email invalid or not sent from the client',
+              message: 'Email is required',
+              code: ForgotPasswordResponseCodes.VALIDATION_FAILED,
             });
             return;
           }
 
           if (typeof otp !== 'string') {
             res.status(400).json({
-              message: 'OTP invalid or not sent from the client',
+              message: 'OTP is required',
+              code: ForgotPasswordResponseCodes.VALIDATION_FAILED,
             });
             return;
           }
 
           if (typeof newPassword !== 'string') {
             res.status(400).json({
-              message: 'New password invalid or not sent from the client',
+              message: 'New password is required',
+              code: ForgotPasswordResponseCodes.VALIDATION_FAILED,
             });
             return;
           }
@@ -786,6 +852,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!isOtpValid) {
             res.status(400).json({
               message: 'Invalid OTP',
+              code: ForgotPasswordResponseCodes.INVALID_OTP,
             });
             return;
           }
@@ -798,6 +865,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           if (!hashedPassword) {
             res.status(500).json({
               message: 'Password could not be hashed',
+              code: ForgotPasswordResponseCodes.PASSWORD_HASH_ERROR,
             });
             return;
           }
@@ -806,17 +874,22 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
           res.status(200).json({
             message: 'Password changed successfully',
+            code: ForgotPasswordResponseCodes.FORGOT_PASSWORD_SUCCESS,
           });
         } catch (error) {
           console.error(error);
           res.status(500).json({
             message: 'Internal server error',
+            code: ForgotPasswordResponseCodes.INTERNAL_SERVER_ERROR,
           });
         }
       }
     );
   };
 
+  /**
+   * TODO: Replace with a better OTP generator `otplib`
+   */
   private generateOTP = () => {
     const code = `${Math.floor(100000 + Math.random() * 900000)}`;
     const generatedAt = Date.now() / 1000;

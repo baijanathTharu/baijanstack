@@ -173,20 +173,23 @@ export class VerifyEmailHandler implements IVerifyEmailHandler {
 
     const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
 
-    /**
-     * update the `is_email_verified` field
-     */
-    users = users.map((u) => {
-      if (u.email === email) {
-        return {
-          ...u,
-          is_email_verified: true,
-        };
-      }
-      return u;
-    });
+    const isValid = isOtpMatched && !isExpired;
+    if (isValid) {
+      /**
+       * update the `is_email_verified` field
+       */
+      users = users.map((u) => {
+        if (u.email === email) {
+          return {
+            ...u,
+            is_email_verified: true,
+          };
+        }
+        return u;
+      });
+    }
 
-    return isOtpMatched && !isExpired;
+    return isValid;
   };
 
   isEmailAlreadyVerified: (email: string) => Promise<boolean> = async (
