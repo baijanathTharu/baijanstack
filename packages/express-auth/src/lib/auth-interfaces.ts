@@ -76,12 +76,6 @@ export interface ILoginHandler {
   };
 
   /**
-   * Decide if user can login or not
-   * For e.g. in case of email not verified do not allow
-   */
-  canLogin: (email: string) => Promise<boolean>;
-
-  /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
   getTokenPayload: (email: string) => Promise<any>;
@@ -144,9 +138,12 @@ export interface IVerifyEmailHandler {
   isEmailAlreadyVerified: (email: string) => Promise<boolean>;
 
   /**
-   * Check the storage if otp is valid
+   * Check the storage if otp is valid and if it is valid update `is_email_verified` to true
    */
-  isOtpValid: (email: string, otp: string) => Promise<boolean>;
+  updateEmailVerificationStatusAndValidateOtp: (
+    email: string,
+    otp: string
+  ) => Promise<boolean>;
 }
 
 export interface ISendOtpHandler {

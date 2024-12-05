@@ -125,13 +125,6 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           return;
         }
 
-        const canLogin = await loginHandler.canLogin(req.body.email);
-        if (!canLogin) {
-          res.status(400).json({
-            message: 'You are not allowed to login.',
-          });
-        }
-
         const user = await loginHandler.getUserByEmail(req.body.email);
 
         if (!user) {
@@ -151,6 +144,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             message: loginHandler.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
           });
           return;
+        }
+
+        if (!user.is_email_verified) {
+          res.status(400).json({
+            message:
+              'You are not allowed to login because your email is not verified!',
+          });
         }
 
         const payload = await loginHandler.getTokenPayload(req.body.email);
@@ -673,7 +673,11 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          const isOtpValid = await verifyEmailHandler.isOtpValid(email, otp);
+          const isOtpValid =
+            await verifyEmailHandler.updateEmailVerificationStatusAndValidateOtp(
+              email,
+              otp
+            );
 
           if (!isOtpValid) {
             res.status(400).json({

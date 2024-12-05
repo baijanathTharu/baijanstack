@@ -21,7 +21,7 @@ export type TUser = {
   }[];
 };
 
-const users: TUser[] = [];
+let users: TUser[] = [];
 
 type TEmailObj = {
   email: string;
@@ -52,7 +52,10 @@ export class SignUpHandler implements ISignUpHandler {
         name: body.name,
         email: body.email,
         password: hashedPassword,
-        is_email_verified: false,
+        /**
+         * !!for testing...
+         */
+        is_email_verified: true,
         otps: [],
       });
     };
@@ -70,10 +73,6 @@ export class LoginHandler implements ILoginHandler {
   };
   errors: { PASSWORD_OR_EMAIL_INCORRECT?: string } = {
     PASSWORD_OR_EMAIL_INCORRECT: 'Password or email incorrect',
-  };
-
-  canLogin: (email: string) => Promise<boolean> = async () => {
-    return true;
   };
 
   getTokenPayload: (email: string) => Promise<{
@@ -160,10 +159,10 @@ export class MeRouteHandler implements IMeRouteHandler {
 }
 
 export class VerifyEmailHandler implements IVerifyEmailHandler {
-  isOtpValid: (email: string, otp: string) => Promise<boolean> = async (
-    email,
-    otp
-  ) => {
+  updateEmailVerificationStatusAndValidateOtp: (
+    email: string,
+    otp: string
+  ) => Promise<boolean> = async (email, otp) => {
     const user = users.find((user) => user.email === email);
     if (!user) {
       return false;
@@ -174,6 +173,19 @@ export class VerifyEmailHandler implements IVerifyEmailHandler {
 
     const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
 
+    /**
+     * update the `is_email_verified` field
+     */
+    users = users.map((u) => {
+      if (u.email === email) {
+        return {
+          ...u,
+          is_email_verified: true,
+        };
+      }
+      return u;
+    });
+
     return isOtpMatched && !isExpired;
   };
 
@@ -183,6 +195,20 @@ export class VerifyEmailHandler implements IVerifyEmailHandler {
     const user = users.find((user) => user.email === email);
 
     return !user?.is_email_verified;
+  };
+
+  updateIsEmailVerifiedField: (email: string) => Promise<void> = async (
+    email
+  ) => {
+    users = users.map((u) => {
+      if (u.email === email) {
+        return {
+          ...u,
+          is_email_verified: true,
+        };
+      }
+      return u;
+    });
   };
 }
 
