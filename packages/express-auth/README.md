@@ -21,7 +21,7 @@ The route generator takes care of generating the routes for authentication. The 
 
 The following routes are generated for authentication.
 
-### /signup
+### POST /signup
 
 This route handles sign up of new user.
 
@@ -96,7 +96,7 @@ This route is used to change the password of the logged in user.
 }
 ```
 
-### /send-otp
+### POST /send-otp
 
 This route is used to update the password. User must send the new password and OTP obtained in the email.
 
