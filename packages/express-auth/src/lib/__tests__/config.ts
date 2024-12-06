@@ -6,5 +6,6 @@ export const config: TConfig = {
   TOKEN_SECRET: 'test',
   ACCESS_TOKEN_AGE: 2 * 60 * 1000, // 2 minute
   REFRESH_TOKEN_AGE: 1000 * 60 * 60 * 24 * 7, // 7 days
-  EMAIL_VERIFICATION_TOKEN_AGE: 1000 * 60 * 60 * 24 * 7, // 7 days
+  OTP_AGE: 30, // 30 seconds
+  OTP_SECRET: 'test',
 };

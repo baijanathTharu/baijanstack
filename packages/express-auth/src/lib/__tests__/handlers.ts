@@ -15,10 +15,6 @@ export type TUser = {
   email: string;
   password: string;
   is_email_verified: boolean;
-  otps: {
-    code: string;
-    generatedAt: number;
-  }[];
 };
 
 let users: TUser[] = [];
@@ -37,8 +33,6 @@ export class SignUpHandler implements ISignUpHandler {
     console.log('signup persistor init...');
   }
 
-  errors: { USER_ALREADY_EXISTS_MESSAGE?: string } = {};
-
   doesUserExists: (body: TSignUpBodyInput) => Promise<boolean> = async (
     body
   ) => {
@@ -56,7 +50,6 @@ export class SignUpHandler implements ISignUpHandler {
          * !!for testing...
          */
         is_email_verified: true,
-        otps: [],
       });
     };
 }
@@ -70,9 +63,6 @@ export class LoginHandler implements ILoginHandler {
     }
 
     return user;
-  };
-  errors: { PASSWORD_OR_EMAIL_INCORRECT?: string } = {
-    PASSWORD_OR_EMAIL_INCORRECT: 'Password or email incorrect',
   };
 
   getTokenPayload: (email: string) => Promise<{
@@ -99,12 +89,6 @@ export class LogoutHandler implements ILogoutHandler {
 }
 
 export class RefreshHandler implements IRefreshHandler {
-  errors: { INVALID_REFRESH_TOKEN?: string } = {};
-
-  refresh: (token: string) => Promise<void> = async () => {
-    console.log('refreshing token...');
-  };
-
   getTokenPayload: (email: string) => Promise<{
     name: string;
     email: string;
@@ -159,39 +143,6 @@ export class MeRouteHandler implements IMeRouteHandler {
 }
 
 export class VerifyEmailHandler implements IVerifyEmailHandler {
-  updateEmailVerificationStatusAndValidateOtp: (
-    email: string,
-    otp: string
-  ) => Promise<boolean> = async (email, otp) => {
-    const user = users.find((user) => user.email === email);
-    if (!user) {
-      return false;
-    }
-    const lastOtp = user.otps[user.otps.length - 1];
-
-    const isOtpMatched = lastOtp?.code === otp;
-
-    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
-
-    const isValid = isOtpMatched && !isExpired;
-    if (isValid) {
-      /**
-       * update the `is_email_verified` field
-       */
-      users = users.map((u) => {
-        if (u.email === email) {
-          return {
-            ...u,
-            is_email_verified: true,
-          };
-        }
-        return u;
-      });
-    }
-
-    return isValid;
-  };
-
   isEmailAlreadyVerified: (email: string) => Promise<boolean> = async (
     email
   ) => {
@@ -220,37 +171,9 @@ export class SendOtpHandler implements ISendOtpHandler {
     const user = users.find((user) => user.email === email);
     return !!user;
   };
-
-  saveOtp: (
-    email: string,
-    otp: { code: string; generatedAt: number }
-  ) => Promise<void> = async (email, otp) => {
-    const userIdx = users.findIndex((user) => user.email === email);
-    if (userIdx < 0) {
-      throw new Error(`User not found`);
-    }
-    users[userIdx].otps.push(otp);
-  };
 }
 
 export class ForgotPasswordHandler implements IForgotPasswordHandler {
-  isOtpValid: (email: string, otp: string) => Promise<boolean> = async (
-    email,
-    otp
-  ) => {
-    const user = users.find((user) => user.email === email);
-    if (!user) {
-      return false;
-    }
-    const lastOtp = user.otps[user.otps.length - 1];
-
-    const isOtpMatched = lastOtp?.code === otp;
-
-    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
-
-    return isOtpMatched && !isExpired;
-  };
-
   saveNewPassword: (email: string, password: string) => Promise<void> = async (
     email,
     password

@@ -41,14 +41,17 @@ import {
   ValidateTokenResponseCodes,
   VerifyEmailResponseCodes,
 } from './response-codes';
+import { IOTPService, OTPService } from './otp';
 
 export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
+  private otpService: IOTPService;
   constructor(
     private app: ExpressApplication,
     private notifyService: INotifyService,
     private config: TConfig,
     private sessionManager?: SessionManager
   ) {
+    this.otpService = OTPService.getInstance({ step: this.config.OTP_AGE });
     if (!this.sessionManager) {
       /**
        * Use the memory storage by default
@@ -86,9 +89,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
           const isUserExists = await signUpHandler.doesUserExists(req.body);
           if (isUserExists) {
             res.status(409).json({
-              message:
-                signUpHandler.errors.USER_ALREADY_EXISTS_MESSAGE ??
-                'User already exists',
+              message: 'User already exists',
               code: SignUpResponseCodes.USER_ALREADY_EXISTS,
             });
             return;
@@ -149,7 +150,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
         if (!user) {
           res.status(409).json({
-            message: loginHandler.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
+            message: 'Password or email incorrect',
             code: LoginResponseCodes.PASSWORD_OR_EMAIL_INCORRECT,
           });
           return;
@@ -162,7 +163,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
 
         if (!isPasswordMatch) {
           res.status(409).json({
-            message: loginHandler.errors.PASSWORD_OR_EMAIL_INCORRECT ?? '',
+            message: 'Password or email incorrect',
             code: LoginResponseCodes.PASSWORD_OR_EMAIL_INCORRECT,
           });
           return;
@@ -730,11 +731,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          const isOtpValid =
-            await verifyEmailHandler.updateEmailVerificationStatusAndValidateOtp(
-              email,
-              otp
-            );
+          const isOtpValid = this.otpService.verifyOtp(
+            otp,
+            this.config.OTP_SECRET
+          );
 
           if (!isOtpValid) {
             res.status(400).json({
@@ -743,6 +743,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             });
             return;
           }
+
+          await verifyEmailHandler.updateIsEmailVerifiedField(email);
 
           this.notifyService.notifyEmailVerified(email);
 
@@ -789,13 +791,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
               return;
             }
 
-            const otp = this.generateOTP();
-
-            await sendOtpHandler.saveOtp(email, otp);
+            const otp = this.otpService.generateOtp(this.config.OTP_SECRET);
 
             this.notifyService.sendOtp(email, {
-              code: otp.code,
-              generatedAt: otp.generatedAt,
+              code: otp,
             });
 
             res.status(200).json({
@@ -848,7 +847,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             return;
           }
 
-          const isOtpValid = await forgotPasswordHandler.isOtpValid(email, otp);
+          const isOtpValid = await this.otpService.verifyOtp(
+            otp,
+            this.config.OTP_SECRET
+          );
 
           if (!isOtpValid) {
             res.status(400).json({
@@ -886,18 +888,5 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         }
       }
     );
-  };
-
-  /**
-   * TODO: Replace with a better OTP generator `otplib`
-   */
-  private generateOTP = () => {
-    const code = `${Math.floor(100000 + Math.random() * 900000)}`;
-    const generatedAt = Date.now() / 1000;
-
-    return {
-      code,
-      generatedAt,
-    };
   };
 }

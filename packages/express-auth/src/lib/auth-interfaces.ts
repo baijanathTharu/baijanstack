@@ -32,19 +32,17 @@ export type TConfig = {
   REFRESH_TOKEN_AGE: number;
 
   /**
-   * Age of access token for email verification in seconds
+   * Age of otp in seconds
    */
-  EMAIL_VERIFICATION_TOKEN_AGE: number;
+  OTP_AGE: number;
+
+  /**
+   * OTP SECRET
+   */
+  OTP_SECRET: string;
 };
 
 export interface ISignUpHandler {
-  errors: {
-    /**
-     * Message that will be returned if user already exists
-     */
-    USER_ALREADY_EXISTS_MESSAGE?: string;
-  };
-
   /**
    * Returns true if user already exists in the storage
    */
@@ -68,13 +66,6 @@ export interface ISignUpHandler {
 }
 
 export interface ILoginHandler {
-  errors: {
-    /**
-     * Message that will be returned if password or email is incorrect
-     */
-    PASSWORD_OR_EMAIL_INCORRECT?: string;
-  };
-
   /**
    * Returns the payload object that is signed in the access and refresh tokens
    */
@@ -95,13 +86,6 @@ export interface ILogoutHandler {
 }
 
 export interface IRefreshHandler {
-  errors: {
-    /**
-     * Message that will be returned if refresh token is invalid
-     */
-    INVALID_REFRESH_TOKEN?: string;
-  };
-
   /**
    * Returns the payload object that must contains `email` that is signed in the access and refresh tokens
    */
@@ -138,12 +122,9 @@ export interface IVerifyEmailHandler {
   isEmailAlreadyVerified: (email: string) => Promise<boolean>;
 
   /**
-   * Check the storage if otp is valid and if it is valid update `is_email_verified` to true
+   * Updates `is_email_verified` to true if otp is valid
    */
-  updateEmailVerificationStatusAndValidateOtp: (
-    email: string,
-    otp: string
-  ) => Promise<boolean>;
+  updateIsEmailVerifiedField: (email: string) => Promise<void>;
 }
 
 export interface ISendOtpHandler {
@@ -151,25 +132,9 @@ export interface ISendOtpHandler {
    * Check the storage to see if user exists or not
    */
   doesUserExists: (email: string) => Promise<boolean>;
-
-  /**
-   * Save the otp in the storage for verification
-   */
-  saveOtp: (
-    email: string,
-    otp: {
-      code: string;
-      generatedAt: number; // timestamp in seconds
-    }
-  ) => Promise<void>;
 }
 
 export interface IForgotPasswordHandler {
-  /**
-   * Check the storage to see if otp is valid
-   */
-  isOtpValid: (email: string, otp: string) => Promise<boolean>;
-
   /**
    * Save the new password in the storage
    */

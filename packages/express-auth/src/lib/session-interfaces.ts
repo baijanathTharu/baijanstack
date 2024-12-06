@@ -71,10 +71,6 @@ export interface INotifyService {
     email: string,
     payload: {
       code: string;
-      /**
-       * timestamp in seconds
-       */
-      generatedAt: number;
     }
   ): Promise<void>;
 

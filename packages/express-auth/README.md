@@ -196,7 +196,7 @@ This route is used to change the password of the logged out user.
 
 ### POST /send-otp
 
-This route is used to get an OTP for email verification and changing password.
+This route is used to get an OTP for verification. [otplib](https://www.npmjs.com/package/otplib) is used to generate the OTP.
 
 > Request Body must have email property:
 
@@ -236,7 +236,8 @@ const authConfig: TConfig = {
   TOKEN_SECRET: 'random_secure_secret_value', // secret for token generation
   ACCESS_TOKEN_AGE: 60, // age of access token in seconds
   REFRESH_TOKEN_AGE: 240000, // age of refresh token in seconds
-  EMAIL_VERIFICATION_TOKEN_AGE: 300000, // age of email verification token in seconds
+  OTP_AGE: 30, // age/step of otp in seconds
+  OTP_SECRET: 'random_secure_secret_value', // secret for otp generation
 };
 ```
 
@@ -310,13 +311,9 @@ export type TUser = {
   email: string;
   password: string;
   is_email_verified: boolean;
-  otps: {
-    code: string;
-    generatedAt: number;
-  }[];
 };
 
-const users: TUser[] = [];
+let users: TUser[] = [];
 
 type TEmailObj = {
   email: string;
@@ -332,8 +329,6 @@ export class SignUpHandler implements ISignUpHandler {
     console.log('signup persistor init...');
   }
 
-  errors: { USER_ALREADY_EXISTS_MESSAGE?: string } = {};
-
   doesUserExists: (body: TSignUpBodyInput) => Promise<boolean> = async (body) => {
     const user = users.find((user) => user.email === body.email);
     return !!user;
@@ -344,8 +339,10 @@ export class SignUpHandler implements ISignUpHandler {
       name: body.name,
       email: body.email,
       password: hashedPassword,
-      is_email_verified: false,
-      otps: [],
+      /**
+       * !!for testing...
+       */
+      is_email_verified: true,
     });
   };
 }
@@ -359,9 +356,6 @@ export class LoginHandler implements ILoginHandler {
     }
 
     return user;
-  };
-  errors: { PASSWORD_OR_EMAIL_INCORRECT?: string } = {
-    PASSWORD_OR_EMAIL_INCORRECT: 'Password or email incorrect',
   };
 
   getTokenPayload: (email: string) => Promise<{
@@ -388,12 +382,6 @@ export class LogoutHandler implements ILogoutHandler {
 }
 
 export class RefreshHandler implements IRefreshHandler {
-  errors: { INVALID_REFRESH_TOKEN?: string } = {};
-
-  refresh: (token: string) => Promise<void> = async () => {
-    console.log('refreshing token...');
-  };
-
   getTokenPayload: (email: string) => Promise<{
     name: string;
     email: string;
@@ -445,39 +433,22 @@ export class MeRouteHandler implements IMeRouteHandler {
 }
 
 export class VerifyEmailHandler implements IVerifyEmailHandler {
-  updateEmailVerificationStatusAndValidateOtp: (email: string, otp: string) => Promise<boolean> = async (email, otp) => {
-    const user = users.find((user) => user.email === email);
-    if (!user) {
-      return false;
-    }
-    const lastOtp = user.otps[user.otps.length - 1];
-
-    const isOtpMatched = lastOtp?.code === otp;
-
-    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
-
-    const isValid = isOtpMatched && !isExpired;
-    if (isValid) {
-      /**
-       * update the `is_email_verified` field
-       */
-      users = users.map((u) => {
-        if (u.email === email) {
-          return {
-            ...u,
-            is_email_verified: true,
-          };
-        }
-        return u;
-      });
-    }
-    return isValid;
-  };
-
   isEmailAlreadyVerified: (email: string) => Promise<boolean> = async (email) => {
     const user = users.find((user) => user.email === email);
 
     return !user?.is_email_verified;
+  };
+
+  updateIsEmailVerifiedField: (email: string) => Promise<void> = async (email) => {
+    users = users.map((u) => {
+      if (u.email === email) {
+        return {
+          ...u,
+          is_email_verified: true,
+        };
+      }
+      return u;
+    });
   };
 }
 
@@ -486,31 +457,9 @@ export class SendOtpHandler implements ISendOtpHandler {
     const user = users.find((user) => user.email === email);
     return !!user;
   };
-
-  saveOtp: (email: string, otp: { code: string; generatedAt: number }) => Promise<void> = async (email, otp) => {
-    const userIdx = users.findIndex((user) => user.email === email);
-    if (userIdx < 0) {
-      throw new Error(`User not found`);
-    }
-    users[userIdx].otps.push(otp);
-  };
 }
 
 export class ForgotPasswordHandler implements IForgotPasswordHandler {
-  isOtpValid: (email: string, otp: string) => Promise<boolean> = async (email, otp) => {
-    const user = users.find((user) => user.email === email);
-    if (!user) {
-      return false;
-    }
-    const lastOtp = user.otps[user.otps.length - 1];
-
-    const isOtpMatched = lastOtp?.code === otp;
-
-    const isExpired = lastOtp?.generatedAt < Date.now() / 1000 - 60 * 5; // 5 minutes
-
-    return isOtpMatched && !isExpired;
-  };
-
   saveNewPassword: (email: string, password: string) => Promise<void> = async (email, password) => {
     const userIdx = users.findIndex((user) => user.email === email);
     if (userIdx < 0) {
