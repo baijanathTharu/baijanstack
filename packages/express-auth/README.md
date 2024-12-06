@@ -145,7 +145,7 @@ This route returns the details of logged in user.
 }
 ```
 
-### POST /reset-password
+### POST /reset
 
 This route resets the password of the logged in user.
 
