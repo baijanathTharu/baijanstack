@@ -25,7 +25,6 @@ import {
   IForgotPasswordHandler,
   TConfig,
   ISendOtpHandler,
-  IValidation,
 } from './auth-interfaces';
 import { INotifyService, SessionManager } from './session-interfaces';
 import { MemoryStorage } from './session-storage';
@@ -43,7 +42,6 @@ import {
   VerifyEmailResponseCodes,
 } from './response-codes';
 import { IOTPService, OTPService } from './otp';
-import { promises } from 'dns';
 
 export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   private otpService: IOTPService;

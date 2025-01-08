@@ -176,11 +176,3 @@ export interface IRouteMiddlewares {
     next: NextFunction
   ) => void;
 }
-
-export interface IValidation {
-  validateAccessToken: (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => void;
-}
