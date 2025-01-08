@@ -36,6 +36,8 @@ export {
   ValidateTokenResponseCodes,
 } from './lib/response-codes';
 
+export { validateAccessToken } from './lib/auth';
+
 export type {
   TSignUpResponseCodes,
   TLoginResponseCodes,

@@ -25,6 +25,7 @@ import {
   IForgotPasswordHandler,
   TConfig,
   ISendOtpHandler,
+  IValidation,
 } from './auth-interfaces';
 import { INotifyService, SessionManager } from './session-interfaces';
 import { MemoryStorage } from './session-storage';
@@ -42,6 +43,7 @@ import {
   VerifyEmailResponseCodes,
 } from './response-codes';
 import { IOTPService, OTPService } from './otp';
+import { promises } from 'dns';
 
 export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   private otpService: IOTPService;
@@ -181,7 +183,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         const payload = await loginHandler.getTokenPayload(req.body.email);
 
         const tokens = generateTokens(payload, {
-          tokenSecret: this.config.TOKEN_SECRET,
+          tokenSecret: this.config?.TOKEN_SECRET ?? '',
           ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
           REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
         });
@@ -295,7 +297,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       // check if token is valid or not
       const validatedToken = verifyToken({
         token,
-        tokenSecret: this.config.TOKEN_SECRET,
+        tokenSecret: this.config?.TOKEN_SECRET ?? '',
       });
       if (validatedToken.code === 'EXPIRED') {
         res.status(400).json({
@@ -890,3 +892,82 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     );
   };
 }
+
+export const validateAccessToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const cookies = req.cookies;
+    if (!cookies) {
+      res.status(400).json({
+        message: 'Cookies are not sent from the client',
+        code: ValidateTokenResponseCodes.MISSING_TOKEN,
+      });
+      return;
+    }
+    const token = cookies['x-access-token'];
+    if (!token) {
+      res.status(400).json({
+        message: 'Access token not found in the cookie',
+        code: ValidateTokenResponseCodes.MISSING_TOKEN,
+      });
+      return;
+    }
+
+    const secret = process.env['TOKEN_SECRET'];
+    if (!secret) {
+      res.status(500).json({
+        message: 'Please set `TOKEN_SECRET` in the env variable',
+        code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
+      });
+      return;
+    }
+
+    // check if token is valid or not
+    const validatedToken = verifyToken({
+      token,
+      tokenSecret: secret,
+    });
+    if (validatedToken.code === 'EXPIRED') {
+      res.status(400).json({
+        message: 'Access Token is expired',
+        code: ValidateTokenResponseCodes.EXPIRED_TOKEN,
+      });
+      return;
+    }
+
+    if (validatedToken.code === 'INVALID') {
+      res.status(400).json({
+        message: 'Access Token is invalid',
+        code: ValidateTokenResponseCodes.INVALID_TOKEN,
+      });
+      return;
+    }
+
+    if (validatedToken.code === 'UNKNOWN') {
+      res.status(400).json({
+        message: 'Access Token is invalid',
+        code: ValidateTokenResponseCodes.INVALID_TOKEN,
+      });
+      return;
+    }
+
+    // token is valid, call the next middleware
+    // @ts-expect-error adding the token to the request
+    req['accessToken'] = token;
+
+    // @ts-expect-error adding the token payload to the request
+    req['decodedAccessToken'] =
+      validatedToken.code === 'VALID' ? validatedToken.data : null;
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: 'Internal server error',
+      code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
+    });
+    return;
+  }
+};
