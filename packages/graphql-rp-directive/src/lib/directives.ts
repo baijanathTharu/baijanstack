@@ -69,7 +69,17 @@ function gatherTypePermissions(schema: GraphQLSchema) {
 
 export function getAuthorizedSchema(
   schema: GraphQLSchema,
-  { rolePermissionsData }: { rolePermissionsData: TRolePermission }
+  {
+    rolePermissionsData,
+  }: {
+    /**
+     * If you have static roles and permission, you can pass it here.
+     * However, if they are dynamic or must be ready asyncronously from
+     * any source, you can pass it in the context like we pass the user
+     * object.
+     */
+    rolePermissionsData?: TRolePermission;
+  }
 ) {
   const typePermissionMapping = gatherTypePermissions(schema);
 
@@ -96,12 +106,18 @@ export function getAuthorizedSchema(
         const originalResolver = fieldConfig.resolve ?? defaultFieldResolver;
         fieldConfig.resolve = (source, args, context, info) => {
           const user = context.user;
+          const dynamicRoleAndPermissionData = context.roleAndPermission;
           if (
             !isAuthorized({
               fieldPermissions,
               typePermissions,
               user,
-              ROLE_PERMISSIONS: rolePermissionsData,
+              /**
+               * The dynamic role and permission passed from the context is given more
+               * priority than the static permissions.
+               */
+              ROLE_PERMISSIONS:
+                dynamicRoleAndPermissionData ?? rolePermissionsData,
             })
           ) {
             throw new Error('Unauthorized');

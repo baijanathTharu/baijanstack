@@ -23,6 +23,8 @@ const typedefs = gql`
 
 3. Create your role and permission data.
 
+> Note: If you have static role and permission, you can create the role and permission object as below: However, if you have dynamic role and permissions, you can pass it from the context like we pass the user object.
+
 ```ts
 import { getAuthorizedSchema, TRolePermission } from '@baijanstack/graphql-rp-directive';
 
@@ -55,16 +57,29 @@ const schemaWithPermissionDirective = getAuthorizedSchema(schema, {
 
 6. Pass `schemaWithPermissionDirective` as schema to your graphql server and return the `user` object from the context.
 
+> Note: If you have a dynamic role and permissions, you have to pass the dynamic `roleAndPermission` object of type `TRolePermission` as shown below. The dynamic permissions take priority than the static permission if you passed both of them.
+
 ```ts
 const server = new ApolloServer<{
   user: {
     roles: Array<string>;
   };
+  roleAndPermission?: TRolePermission;
 }>({
   schema: schemaWithPermissionDirective,
   context: {
     user: {
       roles: ['PUBLIC'],
+    },
+    // This context can be async function and you can pass the `roleAndPermission`
+    // by quering your database or reading from cache.
+    roleAndPermission: {
+      ADMIN: {
+        permissions: ['READ_SECURE_DATA', 'READ_RESTRICTED_FIELD', 'READ_MUTATION_RESPONSE', 'CREATE_FIELD'],
+      },
+      PUBLIC: {
+        permissions: ['READ_MUTATION_RESPONSE'],
+      },
     },
   },
 });
