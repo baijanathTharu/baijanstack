@@ -91,42 +91,44 @@ export function getAuthorizedSchema(
         'hasPermission'
       )?.[0];
       const fieldPermissions = fieldAuthDirective?.['permissions'] ?? [];
-      const typePermissions = typePermissionMapping.get(typeName) ?? [];
 
-      if (
-        denyRequest({ fieldPermissions, typePermissions, fieldName, typeName })
-      ) {
+      // Inherit type-level permissions if field has no directive
+      const typePermissions = typePermissionMapping.get(typeName) ?? [];
+      const effectivePermissions =
+        fieldPermissions.length > 0 ? fieldPermissions : typePermissions;
+
+      // If no permissions are set at all, deny access by default
+      if (effectivePermissions.length === 0) {
         fieldConfig.resolve = () => {
-          throw new Error(`Denied Request for ${typeName}.${fieldName}`);
+          throw new Error(`Access denied for ${typeName}.${fieldName}`);
         };
         return fieldConfig;
       }
 
-      if (fieldPermissions.length > 0 || typePermissions.length > 0) {
-        const originalResolver = fieldConfig.resolve ?? defaultFieldResolver;
-        fieldConfig.resolve = (source, args, context, info) => {
-          const user = context.user;
-          const dynamicRoleAndPermissionData = context.roleAndPermission;
-          if (
-            !isAuthorized({
-              fieldPermissions,
-              typePermissions,
-              user,
-              /**
-               * The dynamic role and permission passed from the context is given more
-               * priority than the static permissions.
-               */
-              ROLE_PERMISSIONS:
-                dynamicRoleAndPermissionData ?? rolePermissionsData,
-            })
-          ) {
-            throw new Error('Unauthorized');
-          }
-          return originalResolver(source, args, context, info);
-        };
-      }
+      const originalResolver = fieldConfig.resolve ?? defaultFieldResolver;
+
+      fieldConfig.resolve = async (source, args, context, info) => {
+        const user = context.user;
+        const dynamicRoleAndPermissionData = context.roleAndPermission;
+
+        if (
+          !isAuthorized({
+            fieldPermissions: effectivePermissions, // Use inherited permissions
+            typePermissions: [], // Already included in effectivePermissions
+            user,
+            ROLE_PERMISSIONS:
+              dynamicRoleAndPermissionData ?? rolePermissionsData,
+          })
+        ) {
+          throw new Error(`Unauthorized access to ${typeName}.${fieldName}`);
+        }
+
+        return originalResolver(source, args, context, info);
+      };
+
       return fieldConfig;
     },
   });
+
   return authorizedSchema;
 }

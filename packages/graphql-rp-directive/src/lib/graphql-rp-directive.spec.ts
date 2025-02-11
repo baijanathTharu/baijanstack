@@ -66,7 +66,9 @@ describe('hasPermissionDirective', () => {
       query: secureFieldsQuery,
     });
     expect(res.errors).toBeDefined();
-    expect(res.errors?.[0].message).toBe('Unauthorized');
+    expect(res.errors?.[0].message).toBe(
+      'Unauthorized access to Query.secureFields'
+    );
     expect(res?.data?.['secureFields']).toBeNull();
   });
 
@@ -97,7 +99,7 @@ describe('hasPermissionDirective', () => {
     });
     expect(res.errors).toBeDefined();
     expect(res.errors?.[0].message).toBe(
-      'Denied Request for Query.publicFields'
+      'Access denied for Query.publicFields'
     );
     // expect(res?.data?.['secureFields']).toBeNull();
   });
@@ -131,7 +133,9 @@ describe('hasPermissionDirective', () => {
       },
     });
     expect(res.errors).toBeDefined();
-    expect(res.errors?.[0].message).toBe('Unauthorized');
+    expect(res.errors?.[0].message).toBe(
+      'Unauthorized access to Mutation.createFields'
+    );
   });
 
   it('should access create api with required permission and multiple roles', async () => {
@@ -233,6 +237,80 @@ describe('hasPermissionDirective', () => {
       name: 'secure field',
     });
   });
+
+  it('should perform permission check only if the field is requested and user does not have required permission', async () => {
+    const secureFieldsQuery = gql`
+      query {
+        secureFields {
+          name
+          email
+          posts {
+            title
+            isPublished
+          }
+        }
+      }
+    `;
+
+    const server = new ApolloServer<{
+      user: {
+        roles: Array<string>;
+      };
+    }>({
+      schema: schemaWithPermissionDirectiveWithDynamicPermission,
+      context: async () => ({
+        user: {
+          roles: ['USER'],
+        },
+        roleAndPermission: rolePermissionsData,
+      }),
+    });
+
+    const res = await server.executeOperation({
+      query: secureFieldsQuery,
+    });
+    expect(res.errors).toBeDefined();
+  });
+
+  it('should perform permission check only if the field is requested and user has required permission', async () => {
+    const secureFieldsQuery = gql`
+      query {
+        secureFields {
+          name
+          email
+          posts {
+            title
+            isPublished
+          }
+        }
+      }
+    `;
+
+    const server = new ApolloServer<{
+      user: {
+        roles: Array<string>;
+      };
+    }>({
+      schema: schemaWithPermissionDirectiveWithDynamicPermission,
+      context: async () => ({
+        user: {
+          roles: ['ADMIN'],
+        },
+        roleAndPermission: rolePermissionsData,
+      }),
+    });
+
+    const res = await server.executeOperation({
+      query: secureFieldsQuery,
+    });
+    expect(res.errors).toBeUndefined();
+    expect(res?.data?.['secureFields']).toEqual({
+      email: expect.any(String),
+      name: expect.any(String),
+      posts: expect.any(Array),
+    });
+  });
+
   it('should not allow access when user has not required permissions', async () => {
     const secureFieldsQuery = gql`
       query {
@@ -262,7 +340,9 @@ describe('hasPermissionDirective', () => {
       query: secureFieldsQuery,
     });
     expect(res.errors).toBeDefined();
-    expect(res.errors?.[0].message).toBe('Unauthorized');
+    expect(res.errors?.[0].message).toBe(
+      'Unauthorized access to Query.secureFields'
+    );
     expect(res?.data?.['secureFields']).toBeNull();
   });
 
@@ -294,7 +374,7 @@ describe('hasPermissionDirective', () => {
     });
     expect(res.errors).toBeDefined();
     expect(res.errors?.[0].message).toBe(
-      'Denied Request for Query.publicFields'
+      'Access denied for Query.publicFields'
     );
     // expect(res?.data?.['secureFields']).toBeNull();
   });
@@ -329,7 +409,9 @@ describe('hasPermissionDirective', () => {
       },
     });
     expect(res.errors).toBeDefined();
-    expect(res.errors?.[0].message).toBe('Unauthorized');
+    expect(res.errors?.[0].message).toBe(
+      'Unauthorized access to Mutation.createFields'
+    );
   });
 
   it('should access create api with required permission and multiple roles', async () => {

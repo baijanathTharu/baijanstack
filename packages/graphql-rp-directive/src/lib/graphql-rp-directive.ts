@@ -9,6 +9,14 @@ export const rolePermissionsData: TRolePermission = {
       'READ_RESTRICTED_FIELD',
       'READ_MUTATION_RESPONSE',
       'CREATE_FIELD',
+      'READ_POST',
+    ],
+  },
+  USER: {
+    permissions: [
+      'READ_SECURE_DATA',
+      'READ_RESTRICTED_FIELD',
+      'READ_MUTATION_RESPONSE',
     ],
   },
   PUBLIC: {
@@ -36,6 +44,12 @@ type RestrictedField {
 type SecureField @hasPermission(permissions: ["READ_SECURE_DATA"]) {
   name: String!
   email: String!
+  posts: [Post]
+}
+
+type Post @hasPermission(permissions: ["READ_POST"]) {
+  title: String!
+  isPublished: Boolean!
 }
 
 type Mutation {
@@ -52,7 +66,14 @@ const resolvers = {
   Query: {
     publicFields: () => ({ name: 'public field' }),
     restrictedFields: () => ({ name: 'restricted field' }),
-    secureFields: () => ({ name: 'secure field', email: 'test@test.com' }),
+    secureFields: () => ({
+      name: 'secure field',
+      email: 'test@test.com',
+      posts: [
+        { title: 'test post', isPublished: true },
+        { title: 'test post 2', isPublished: false },
+      ],
+    }),
   },
   Mutation: {
     createFields: () => ({ done: true }),
