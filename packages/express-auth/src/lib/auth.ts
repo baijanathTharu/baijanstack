@@ -897,7 +897,7 @@ export const validateAccessToken = async (
   next: NextFunction
 ) => {
   try {
-    const cookies = req.cookies;
+    const cookies = req.cookies ?? req.headers;
     if (!cookies) {
       res.status(400).json({
         message: 'Cookies are not sent from the client',
