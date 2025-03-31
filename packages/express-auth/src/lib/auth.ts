@@ -216,6 +216,11 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
         res.status(200).json({
           message: 'Logged in successfully!!',
           code: LoginResponseCodes.LOGIN_SUCCESS,
+          data: {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            user: user,
+          },
         });
       } catch (error) {
         console.error(error);
@@ -231,7 +236,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     () => {
       return this.app.post(
         `${this.config.BASE_PATH}/logout`,
-        this.validateAccessToken,
+        validateAccessToken,
         this.validateRefreshToken,
 
         async (req, res) => {
@@ -273,86 +278,19 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       );
     };
 
-  validateAccessToken = (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const cookies = req.cookies;
-      if (!cookies) {
-        res.status(400).json({
-          message: 'Cookies are not sent from the client',
-          code: ValidateTokenResponseCodes.MISSING_TOKEN,
-        });
-        return;
-      }
-      const token = cookies['x-access-token'];
-      if (!token) {
-        res.status(400).json({
-          message: 'Access token not found in the cookie',
-          code: ValidateTokenResponseCodes.MISSING_TOKEN,
-        });
-        return;
-      }
-
-      // check if token is valid or not
-      const validatedToken = verifyToken({
-        token,
-        tokenSecret: this.config?.TOKEN_SECRET ?? '',
-      });
-      if (validatedToken.code === 'EXPIRED') {
-        res.status(400).json({
-          message: 'Access Token is expired',
-          code: ValidateTokenResponseCodes.EXPIRED_TOKEN,
-        });
-        return;
-      }
-
-      if (validatedToken.code === 'INVALID') {
-        res.status(400).json({
-          message: 'Access Token is invalid',
-          code: ValidateTokenResponseCodes.INVALID_TOKEN,
-        });
-        return;
-      }
-
-      if (validatedToken.code === 'UNKNOWN') {
-        res.status(400).json({
-          message: 'Access Token is invalid',
-          code: ValidateTokenResponseCodes.INVALID_TOKEN,
-        });
-        return;
-      }
-
-      // token is valid, call the next middleware
-      // @ts-expect-error adding the token to the request
-      req['accessToken'] = token;
-
-      // @ts-expect-error adding the token payload to the request
-      req['decodedAccessToken'] =
-        validatedToken.code === 'VALID' ? validatedToken.data : null;
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({
-        message: 'Internal server error',
-        code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
-      });
-      return;
-    }
-  };
-
   validateRefreshToken = (req: Request, res: Response, next: NextFunction) => {
     try {
-      const cookies = req.cookies;
-      if (!cookies) {
-        res.status(400).json({
-          message: 'Cookies are not sent from the client',
-          code: ValidateTokenResponseCodes.MISSING_TOKEN,
-        });
-        return;
+      let token: string | null = null;
+      if (req.headers['x-refresh-token']) {
+        token = req.headers['x-refresh-token'] as string;
       }
-      const token = cookies['x-refresh-token'];
+
+      if (req.cookies['x-refresh-token']) {
+        token = req.cookies['x-refresh-token'] as string;
+      }
       if (!token) {
         res.status(400).json({
-          message: 'Refresh Token not found in the cookie',
+          message: 'Refresh token not found in the header or cookie',
           code: ValidateTokenResponseCodes.MISSING_TOKEN,
         });
         return;
@@ -409,7 +347,21 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     res: Response,
     next: NextFunction
   ) => {
-    const refreshToken = req.cookies['x-refresh-token'];
+    let refreshToken: string | null = null;
+    if (req.headers['x-refresh-token']) {
+      refreshToken = req.headers['x-refresh-token'] as string;
+    }
+    if (req.cookies['x-refresh-token']) {
+      refreshToken = req.cookies['x-refresh-token'] as string;
+    }
+    if (!refreshToken) {
+      res.status(400).json({
+        message: 'Refresh token not found in the header or cookie',
+        code: ValidateTokenResponseCodes.MISSING_TOKEN,
+      });
+      return;
+    }
+
     const deviceInfo = extractDeviceIdentifier(req);
 
     if (!refreshToken) {
@@ -543,6 +495,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             res.status(200).json({
               message: 'Refreshed token successfully!!',
               code: RefreshResponseCodes.REFRESH_SUCCESS,
+              data: {
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+              },
             });
           } catch (error) {
             console.error(error);
@@ -560,7 +516,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   ) => ExpressApplication = (resetPasswordHandler) => {
     return this.app.post(
       `${this.config.BASE_PATH}/reset`,
-      this.validateAccessToken,
+      validateAccessToken,
       async (req, res) => {
         try {
           const oldPassword = req.body.oldPassword;
@@ -653,7 +609,7 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
   ) => {
     return this.app.get(
       `${this.config.BASE_PATH}/me`,
-      this.validateAccessToken,
+      validateAccessToken,
       async (req, res) => {
         try {
           // @ts-expect-error have been attached on the request
@@ -897,18 +853,17 @@ export const validateAccessToken = async (
   next: NextFunction
 ) => {
   try {
-    const cookies = req.cookies ?? req.headers;
-    if (!cookies) {
-      res.status(400).json({
-        message: 'Cookies are not sent from the client',
-        code: ValidateTokenResponseCodes.MISSING_TOKEN,
-      });
-      return;
+    let token: string | null = null;
+    if (req.headers['x-access-token']) {
+      token = req.headers['x-access-token'] as string;
     }
-    const token = cookies['x-access-token'];
+
+    if (req.cookies['x-access-token']) {
+      token = req.cookies['x-access-token'] as string;
+    }
     if (!token) {
       res.status(400).json({
-        message: 'Access token not found in the cookie',
+        message: 'Access token not found in the header or cookie',
         code: ValidateTokenResponseCodes.MISSING_TOKEN,
       });
       return;
