@@ -19,6 +19,11 @@ import {
 import { EmailNotificationService } from './notifier';
 import { LoginResponseCodes, SignUpResponseCodes } from '../response-codes';
 
+/**
+ * set the env variable
+ */
+process.env['TOKEN_SECRET'] = config.TOKEN_SECRET;
+
 const john = {
   name: 'john',
   email: 'john@test.com',
@@ -73,7 +78,7 @@ describe('expressAuth', () => {
   it('should be able to sign up', async () => {
     const res = await request(app)
       .post(`${config.BASE_PATH}/signup`)
-      .send({ email: john.email, password: 'john' });
+      .send({ email: john.email, password: john.password, name: john.name });
     expect(res.status).toBe(201);
     expect(res.body).toEqual({
       message: expect.any(String),
@@ -133,11 +138,72 @@ describe('expressAuth', () => {
       .post(`${config.BASE_PATH}/login`)
       .send({ email: john.email, password: john.password });
     expect(res.status).toBe(200);
+
     expect(res.body).toEqual({
       message: expect.any(String),
       code: LoginResponseCodes.LOGIN_SUCCESS,
+      data: {
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+        user: {
+          name: john.name,
+          email: john.email,
+          is_email_verified: true,
+          password: expect.any(String),
+        },
+      },
     });
 
     expect(res.header['set-cookie']).toBeDefined();
+
+    // send token in headers to check if user is logged in
+    const meRes = await request(app)
+      .get(`${config.BASE_PATH}/me`)
+      .set('x-access-token', res.body.data.accessToken);
+
+    expect(meRes.status).toBe(200);
+  });
+
+  it('should not refresh token without a refresh token in headers or cookies', async () => {
+    const res = await request(app).post(`${config.BASE_PATH}/refresh`);
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      message: 'Refresh token not found in the header or cookie',
+      code: expect.any(String),
+    });
+  });
+
+  it('should not refresh token with an invalid refresh token', async () => {
+    const res = await request(app)
+      .post(`${config.BASE_PATH}/refresh`)
+      .set('x-refresh-token', 'invalid-token');
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      message: 'Token is invalid',
+      code: expect.any(String),
+    });
+  });
+
+  it('should refresh token successfully with a valid refresh token', async () => {
+    // First, login to get a valid refresh token
+    const loginRes = await request(app)
+      .post(`${config.BASE_PATH}/login`)
+      .send({ email: john.email, password: john.password });
+    expect(loginRes.status).toBe(200);
+
+    const refreshToken = loginRes.body.data.refreshToken;
+
+    // Use the refresh token to refresh tokens
+    const refreshRes = await request(app)
+      .post(`${config.BASE_PATH}/refresh`)
+      .set('x-refresh-token', refreshToken);
+
+    expect(refreshRes.status).toBe(200);
+    expect(refreshRes.body).toEqual({
+      message: 'Refreshed token successfully!!',
+      code: expect.any(String),
+    });
+
+    expect(refreshRes.header['set-cookie']).toBeDefined();
   });
 });

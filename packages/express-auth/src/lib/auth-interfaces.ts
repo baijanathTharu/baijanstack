@@ -160,7 +160,10 @@ export interface IRouteGenerator {
 }
 
 export interface IRouteMiddlewares {
-  validateAccessToken: (
+  /**
+   * @deprecated
+   */
+  validateAccessToken?: (
     req: Request,
     res: Response,
     next: NextFunction

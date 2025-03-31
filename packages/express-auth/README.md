@@ -89,10 +89,17 @@ This route handles login of user.
 
 ## Response
 
+> Note: user will be type of user you return from your handler
+
 ```ts
 {
   message: string;
   code: TLoginResponseCodes;
+  data: {
+    accessToken: string;
+    refreshToken: string;
+    user: any;
+  }
 }
 ```
 
@@ -472,12 +479,19 @@ export class ForgotPasswordHandler implements IForgotPasswordHandler {
 
 ## Protected Routes
 
-You can protect your routes by using the middlewares provided by this library.
+You can protect your routes by using the middleware `validateAccesstoken` provided by this library.
 
-The `routeGenerator` has a middleware to protect your routes.
+Note: You can send the tokens either from the cookie or in headers. Please make sure you are not adding `Bearer` before the token else you will get invalid token error. If you are using headers, you must send token as below:
+
+```
+x-access-token: <token_value>
+x-refresh-token: <token_value>
+```
 
 ```ts
-app.get('/protected', routerGenerator.validateAccessToken, (req, res) => {
+import { validateAccessToken } from 'baijanstack/express-auth';
+
+app.get('/protected', validateAccessToken, (req, res) => {
   console.log('Logged in user is:', req.user);
   res.send('Hello World');
 });
