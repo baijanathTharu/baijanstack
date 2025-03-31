@@ -495,6 +495,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
             res.status(200).json({
               message: 'Refreshed token successfully!!',
               code: RefreshResponseCodes.REFRESH_SUCCESS,
+              data: {
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+              },
             });
           } catch (error) {
             console.error(error);

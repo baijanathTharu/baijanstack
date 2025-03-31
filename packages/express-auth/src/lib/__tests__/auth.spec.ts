@@ -202,6 +202,10 @@ describe('expressAuth', () => {
     expect(refreshRes.body).toEqual({
       message: 'Refreshed token successfully!!',
       code: expect.any(String),
+      data: {
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+      },
     });
 
     expect(refreshRes.header['set-cookie']).toBeDefined();

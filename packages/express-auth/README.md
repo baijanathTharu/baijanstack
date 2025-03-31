@@ -126,6 +126,10 @@ This route refreshes the access token and refresh token if refresh token is vali
 {
   message: string;
   code: TRefreshResponseCodes;
+  data: {
+    accessToken: string;
+    refreshToken: string;
+  }
 }
 ```
 
