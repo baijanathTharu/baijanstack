@@ -49,7 +49,7 @@ export class SignUpHandler implements ISignUpHandler {
         /**
          * !!for testing...
          */
-        is_email_verified: true,
+        is_email_verified: false,
       });
     };
 }

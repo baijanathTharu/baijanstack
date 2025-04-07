@@ -97,6 +97,17 @@ describe('expressAuth', () => {
     });
   });
 
+  it('should be able to verify email with test otp code', async () => {
+    const res = await request(app)
+      .post(`${config.BASE_PATH}/verify-email`)
+      .send({ email: john.email, otp: config.TEST_OTP });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      message: expect.any(String),
+      code: 'VERIFY_EMAIL_SUCCESS',
+    });
+  });
+
   it('should not be able to login without an email', async () => {
     const res = await request(app)
       .post(`${config.BASE_PATH}/login`)

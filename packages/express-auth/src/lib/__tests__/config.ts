@@ -8,4 +8,5 @@ export const config: TConfig = {
   REFRESH_TOKEN_AGE: 2 * 1000, // 2 seconds
   OTP_AGE: 30, // 30 seconds
   OTP_SECRET: 'test',
+  TEST_OTP: '123456', // 6 digits
 };

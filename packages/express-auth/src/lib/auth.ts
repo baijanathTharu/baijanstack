@@ -51,7 +51,10 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
     private config: TConfig,
     private sessionManager?: SessionManager
   ) {
-    this.otpService = OTPService.getInstance({ step: this.config.OTP_AGE });
+    this.otpService = OTPService.getInstance({
+      step: this.config.OTP_AGE,
+      testOtp: this.config.TEST_OTP ?? undefined,
+    });
     if (!this.sessionManager) {
       /**
        * Use the memory storage by default

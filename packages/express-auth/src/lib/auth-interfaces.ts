@@ -40,6 +40,13 @@ export type TConfig = {
    * OTP SECRET
    */
   OTP_SECRET: string;
+
+  /**
+   * If you want to generate the same otp all the time,
+   * may be for testing purposes.
+   * Provide the 6 digits otp here.
+   */
+  TEST_OTP?: string;
 };
 
 export interface ISignUpHandler {
