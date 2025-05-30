@@ -38,6 +38,7 @@ import {
   ResetPasswordResponseCodes,
   SendOtpResponseCodes,
   SignUpResponseCodes,
+  TValidateTokenResponseCodes,
   ValidateTokenResponseCodes,
   VerifyEmailResponseCodes,
 } from './response-codes';
@@ -927,3 +928,101 @@ export const validateAccessToken = async (
     return;
   }
 };
+
+/**
+ * The can be used to validate the auth by passing the access token
+ * instead of passing request and response objects.
+ */
+export function validateAuthWithToken<TSessionUser>(tokens: {
+  accessToken: string;
+}): {
+  isSuccess: boolean;
+  message: string;
+  code: TValidateTokenResponseCodes;
+  token: string | null;
+  decodedAccessToken: TSessionUser | null;
+} {
+  try {
+    const secret = process.env['TOKEN_SECRET'];
+    if (!secret) {
+      console.error({
+        message: 'Please set `TOKEN_SECRET` in the env variable',
+        code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
+      });
+      return {
+        isSuccess: false,
+        message: 'Please set `TOKEN_SECRET` in the env variable',
+        code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
+        decodedAccessToken: null,
+        token: null,
+      };
+    }
+
+    const token = tokens.accessToken;
+
+    if (!token) {
+      return {
+        isSuccess: false,
+        message: 'Access token not found in the header or cookie',
+        code: ValidateTokenResponseCodes.MISSING_TOKEN,
+        decodedAccessToken: null,
+        token: null,
+      };
+    }
+
+    // check if token is valid or not
+    const validatedToken = verifyToken({
+      token,
+      tokenSecret: secret,
+    });
+    if (validatedToken.code === 'EXPIRED') {
+      return {
+        isSuccess: false,
+        message: 'Access Token is expired',
+        code: ValidateTokenResponseCodes.EXPIRED_TOKEN,
+        decodedAccessToken: null,
+        token: null,
+      };
+    }
+
+    if (validatedToken.code === 'INVALID') {
+      return {
+        isSuccess: false,
+        message: 'Access Token is invalid',
+        code: ValidateTokenResponseCodes.INVALID_TOKEN,
+        decodedAccessToken: null,
+        token: null,
+      };
+    }
+
+    if (validatedToken.code === 'UNKNOWN') {
+      return {
+        isSuccess: false,
+        message: 'Access Token is invalid',
+        code: ValidateTokenResponseCodes.INVALID_TOKEN,
+        decodedAccessToken: null,
+        token: null,
+      };
+    }
+
+    return {
+      isSuccess: true,
+      message: 'Token is valid',
+      code: ValidateTokenResponseCodes.VALIDATION_SUCCESS,
+      decodedAccessToken:
+        validatedToken.code === 'VALID'
+          ? (validatedToken.data as TSessionUser)
+          : null,
+      token: token,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      isSuccess: false,
+      token: null,
+      decodedAccessToken: null,
+      message: 'Internal server error',
+      code: ValidateTokenResponseCodes.INTERNAL_SERVER_ERROR,
+    };
+  }
+}

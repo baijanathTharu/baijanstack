@@ -27,6 +27,7 @@ export const ValidateTokenResponseCodes = {
   INVALID_TOKEN: 'INVALID_TOKEN',
   EXPIRED_TOKEN: 'EXPIRED_TOKEN',
   INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
+  VALIDATION_SUCCESS: 'VALIDATION_SUCCESS',
 } as const;
 export type TValidateTokenResponseCodes =
   keyof typeof ValidateTokenResponseCodes;

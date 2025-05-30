@@ -512,6 +512,23 @@ app.get('/protected', validateAccessToken, (req, res) => {
 }
 ```
 
+### Utlilities
+
+If you want to validate the access token then you can use the following utility function:
+
+```ts
+import { validateAuthWithToken } from '@baijanstack/express-auth';
+
+function validateAuth(accessToken: string) {
+  const validatedAuth = validateAuthWithToken(accessToken);
+
+  // if the access token is valid, it will return the decoded token
+  // and you can do anything with it.
+}
+```
+
+> Note: If you want to type the decoded token you can pass the generic type to the `validateAuthWithToken` function.
+
 ## Collaborators
 
 - [Baijanath Tharu](https://github.com/baijanathTharu)
