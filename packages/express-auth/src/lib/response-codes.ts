@@ -94,3 +94,10 @@ export const ForgotPasswordResponseCodes = {
 } as const;
 export type TForgotPasswordResponseCodes =
   keyof typeof ForgotPasswordResponseCodes;
+
+export const OAuthResponseCodes = {
+  OAUTH_SUCCESS: 'OAUTH_SUCCESS',
+  OAUTH_FAILURE: 'OAUTH_FAILURE',
+  INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
+} as const;
+export type TOAuthResponseCodes = keyof typeof OAuthResponseCodes;

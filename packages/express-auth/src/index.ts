@@ -10,6 +10,7 @@ export {
   IForgotPasswordHandler,
   ISendOtpHandler,
   TConfig,
+  IOAuthHandler,
 } from './lib/auth-interfaces';
 
 export {
@@ -50,3 +51,5 @@ export type {
   TForgotPasswordResponseCodes,
   TValidateTokenResponseCodes,
 } from './lib/response-codes';
+
+export { GoogleAuthGenerator } from './lib/oauth/google';

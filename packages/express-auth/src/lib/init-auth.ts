@@ -8,8 +8,11 @@ import {
   ISignUpHandler,
   IVerifyEmailHandler,
   ISendOtpHandler,
+  IOAuthHandler,
+  AuthProvider,
 } from './auth-interfaces';
 import { RouteGenerator } from './auth';
+import { GoogleAuthGenerator } from './oauth/google';
 
 export function initAuth({
   routeGenerator,
@@ -22,6 +25,7 @@ export function initAuth({
   verifyEmailHandler,
   forgotPasswordHandler,
   sendOtpHandler,
+  googleOAuth,
 }: {
   routeGenerator: RouteGenerator;
   signUpHandler: ISignUpHandler;
@@ -33,6 +37,10 @@ export function initAuth({
   verifyEmailHandler: IVerifyEmailHandler;
   forgotPasswordHandler: IForgotPasswordHandler;
   sendOtpHandler: ISendOtpHandler;
+  googleOAuth?: {
+    oAuthHandler: IOAuthHandler;
+    generator: GoogleAuthGenerator;
+  };
 }) {
   // sign up route
   routeGenerator.createSignUpRoute(signUpHandler);
@@ -60,6 +68,10 @@ export function initAuth({
 
   // verify otp route
   routeGenerator.createSendOtpRoute(sendOtpHandler);
+
+  if (googleOAuth) {
+    googleOAuth.generator.createOAuthRoute(AuthProvider.GOOGLE);
+  }
 
   return routeGenerator;
 }

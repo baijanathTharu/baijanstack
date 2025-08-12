@@ -186,3 +186,43 @@ export interface IRouteMiddlewares {
     next: NextFunction
   ) => void;
 }
+
+export enum AuthProvider {
+  GOOGLE = 'google',
+}
+
+export interface IOAuthHandler {
+  /**
+   * Creates or updates user in the storage
+   * based on the email provided by the OAuth provider.
+   * Returns true if user was created or updated.
+   * Returns false if user already exists and was not updated.
+   */
+  createOrUpdateUser: (payload: {
+    email: string;
+    googleId: string;
+    provider: AuthProvider;
+    displayName?: string;
+  }) => Promise<boolean>;
+
+  /**
+   * Returns the payload object that is signed in the access and refresh tokens
+   */
+  getTokenPayload: (email: string) => Promise<any>;
+}
+
+export interface IOAuthGenerator {
+  createOAuthRoute: (provider: AuthProvider) => ExpressApplication;
+}
+
+export type TGoogleAuthConfig = {
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_FAILURE_REDIRECT_URI: string;
+  GOOGLE_SUCCESS_REDIRECT_URI: string;
+};
+export type TGoogleProfile = {
+  id: string;
+  displayName: string;
+  email: string;
+};
