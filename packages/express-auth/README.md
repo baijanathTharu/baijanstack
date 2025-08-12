@@ -228,6 +228,135 @@ This route is used to get an OTP for verification. [otplib](https://www.npmjs.co
 }
 ```
 
+---
+
+## Google OAuth Integration
+
+This package supports authentication via Google OAuth 2.0 in addition to email-password. You can enable Google login for your Express app with minimal setup.
+
+### Required Environment Variables
+
+Set these environment variables in your `.env` file or deployment environment:
+
+- `GOOGLE_CLIENT_ID`: Your Google OAuth client ID.
+- `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret.
+- `GOOGLE_SUCCESS_REDIRECT_URI`: URI to redirect users after successful login (e.g., `http://localhost:3000/success`).
+- `GOOGLE_FAILURE_REDIRECT_URI`: URI to redirect users after failed login (e.g., `http://localhost:3000/failure`).
+
+### Usage Example
+
+Add Google OAuth config to your main config object:
+
+```ts
+const config = {
+  BASE_PATH: '/v1/auth',
+  SALT_ROUNDS: 10,
+  TOKEN_SECRET: process.env.TOKEN_SECRET,
+  ACCESS_TOKEN_AGE: 60,
+  REFRESH_TOKEN_AGE: 240000,
+  OTP_AGE: 30,
+  OTP_SECRET: process.env.OTP_SECRET,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_SUCCESS_REDIRECT_URI: process.env.GOOGLE_SUCCESS_REDIRECT_URI,
+  GOOGLE_FAILURE_REDIRECT_URI: process.env.GOOGLE_FAILURE_REDIRECT_URI,
+};
+```
+
+Create and use the GoogleAuthGenerator and handler:
+
+```ts
+import { GoogleAuthGenerator } from '@baijanstack/express-auth';
+
+const oAuthHandler = new GoogleOAuthHandler();
+
+const googleGenerator = new GoogleAuthGenerator(app, config, oAuthHandler);
+
+initAuth({
+  routeGenerator,
+  signUpHandler: new SignUpHandler(),
+  loginHandler: new LoginHandler(),
+  logoutHandler: new LogoutHandler(),
+  refreshHandler: new RefreshHandler(),
+  resetPasswordHandler: new ResetPasswordHandler(),
+  meRouteHandler: new MeRouteHandler(),
+  verifyEmailHandler: new VerifyEmailHandler(),
+  forgotPasswordHandler: new ForgotPasswordHandler(),
+  sendOtpHandler: new SendOtpHandler(),
+  googleOAuth: {
+    generator: googleGenerator,
+    oAuthHandler,
+  },
+});
+```
+
+### Implementing GoogleOAuthHandler
+
+You must implement a handler that conforms to the `IOAuthHandler` interface. Here is a ready-to-use example:
+
+```ts
+import { IOAuthHandler, AuthProvider } from '@baijanstack/express-auth';
+
+export class GoogleOAuthHandler implements IOAuthHandler {
+  // Simulated user store
+  private users: any[] = [];
+
+  /**
+   * Called when a user authenticates via Google.
+   * You should create or update the user in your database here.
+   */
+  async createOrUpdateUser({ email, provider, googleId, displayName }) {
+    let user = this.users.find((u) => u.email === email);
+    if (!user) {
+      user = {
+        email,
+        provider,
+        googleId,
+        displayName,
+        is_email_verified: true,
+      };
+      this.users.push(user);
+    } else {
+      user.googleId = googleId;
+      user.displayName = displayName;
+      user.provider = provider;
+    }
+    return user;
+  }
+
+  /**
+   * Returns the payload to be signed in JWT tokens.
+   */
+  async getTokenPayload(email: string) {
+    const user = this.users.find((u) => u.email === email);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return {
+      email: user.email,
+      name: user.displayName || 'Google User',
+      provider: user.provider,
+    };
+  }
+}
+```
+
+### Google OAuth Routes
+
+- `GET /v1/auth/google`: Initiates Google OAuth login.
+- `GET /v1/auth/google/callback`: Handles Google OAuth callback.
+
+On successful authentication, access and refresh tokens are set in cookies and the user is redirected to `GOOGLE_SUCCESS_REDIRECT_URI`.
+
+### Important Notes
+
+- Ensure your Google OAuth client is configured to allow the callback URI (`/v1/auth/google/callback`).
+- The handler you provide must persist or update users as needed.
+- Tokens are set in cookies for session management.
+- You can combine Google OAuth with email-password authentication seamlessly.
+
+---
+
 ## Usage
 
 - Install the dependency.
@@ -249,6 +378,11 @@ const authConfig: TConfig = {
   REFRESH_TOKEN_AGE: 240000, // age of refresh token in seconds
   OTP_AGE: 30, // age/step of otp in seconds
   OTP_SECRET: 'random_secure_secret_value', // secret for otp generation
+  // Add Google OAuth config if using Google login
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_SUCCESS_REDIRECT_URI: process.env.GOOGLE_SUCCESS_REDIRECT_URI,
+  GOOGLE_FAILURE_REDIRECT_URI: process.env.GOOGLE_FAILURE_REDIRECT_URI,
 };
 ```
 
@@ -302,6 +436,11 @@ initAuth({
   verifyEmailHandler: new VerifyEmailHandler(),
   forgotPasswordHandler: new ForgotPasswordHandler(),
   verifyOtpHandler: new VerifyOtpHandler(),
+  // Add Google OAuth if using Google login
+  googleOAuth: {
+    generator: googleGenerator,
+    oAuthHandler,
+  },
 });
 ```
 

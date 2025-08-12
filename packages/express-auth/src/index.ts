@@ -11,6 +11,7 @@ export {
   ISendOtpHandler,
   TConfig,
   IOAuthHandler,
+  AuthProvider,
 } from './lib/auth-interfaces';
 
 export {
