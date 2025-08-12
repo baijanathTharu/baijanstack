@@ -2,11 +2,12 @@ import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 
-import { config } from './config';
+import { config, googleConfig } from './config';
 import { initAuth } from '../init-auth';
-import { RouteGenerator } from '../auth';
+import { RouteGenerator, validateAccessToken } from '../auth';
 import {
   ForgotPasswordHandler,
+  GoogleOAuthHandler,
   LoginHandler,
   LogoutHandler,
   MeRouteHandler,
@@ -18,6 +19,8 @@ import {
 } from './handlers';
 import { EmailNotificationService } from './notifier';
 import { LoginResponseCodes, SignUpResponseCodes } from '../response-codes';
+import { GoogleAuthGenerator } from '../oauth/google';
+import passport from 'passport';
 
 /**
  * set the env variable
@@ -34,12 +37,45 @@ describe('expressAuth', () => {
   let app: express.Application;
 
   beforeAll(() => {
+    jest
+      .spyOn(passport, 'authenticate')
+      .mockImplementation((strategy, options) => {
+        return (req: any, res: any, next: any) => {
+          // Simulate successful authentication
+          req.user = { id: 'google-user', email: john.email };
+          next();
+        };
+      });
+
     app = express();
     app.use(express.json());
 
     app.use(cookieParser());
 
     console.log('----config----', config);
+
+    app.get('/', (req, res) => {
+      res.send('Express Auth Service is running!');
+    });
+
+    app.get('/protected', validateAccessToken, (req, res) => {
+      // @ts-expect-error need to make express.d.ts
+      const user = req.decodedAccessToken;
+      res.json({
+        message: 'This is a protected route',
+        user: user,
+      });
+    });
+
+    const oAuthHandler = new GoogleOAuthHandler();
+    const googleGenerator = new GoogleAuthGenerator(
+      app,
+      {
+        ...config,
+        ...googleConfig,
+      },
+      oAuthHandler
+    );
 
     const routeGenerator = new RouteGenerator(
       app,
@@ -58,7 +94,15 @@ describe('expressAuth', () => {
       verifyEmailHandler: new VerifyEmailHandler(),
       forgotPasswordHandler: new ForgotPasswordHandler(),
       sendOtpHandler: new SendOtpHandler(),
+      googleOAuth: {
+        generator: googleGenerator,
+        oAuthHandler,
+      },
     });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('should not be able to sign up without an email', async () => {
@@ -220,5 +264,16 @@ describe('expressAuth', () => {
     });
 
     expect(refreshRes.header['set-cookie']).toBeDefined();
+  });
+
+  // TODO: add more test for other cases
+  // failures and different scenarios
+  it('should mock Google OAuth callback and return user', async () => {
+    const res = await request(app).get(`${config.BASE_PATH}/google/callback`);
+
+    expect(res.status).toBe(302);
+    // @ts-expect-error may need typing
+    const location = res.header.location;
+    expect(location).toBe(googleConfig.GOOGLE_SUCCESS_REDIRECT_URI);
   });
 });
