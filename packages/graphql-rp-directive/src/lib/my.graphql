@@ -19,3 +19,10 @@ type SecureField {
   name: String!
   email: String!
 }
+type Mutation @hasPermission(permissions: ["CREATE_FIELD"]) {
+  createFields(id: Int!): MutationResponse!
+}
+
+type MutationResponse @hasPermission(permissions: ["READ_MUTATION_RESPONSE"]) {
+  done: Boolean!
+}

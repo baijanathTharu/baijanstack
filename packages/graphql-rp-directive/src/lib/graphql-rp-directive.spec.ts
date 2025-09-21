@@ -4,6 +4,7 @@ import {
   schemaWithPermissionDirectiveWithDynamicPermission,
 } from './graphql-rp-directive';
 import { ApolloServer, gql } from 'apollo-server-express';
+import { TRolePermission } from './types';
 
 describe('hasPermissionDirective', () => {
   // ******** static permissions test cases starts ********
@@ -467,6 +468,85 @@ describe('hasPermissionDirective', () => {
           roles: ['ADMIN'],
         },
         roleAndPermission: rolePermissionsData,
+      }),
+    });
+
+    const res = await server.executeOperation({
+      query: createMutation,
+      variables: {
+        id: 1,
+      },
+    });
+    expect(res.errors).toBeUndefined();
+    expect(res?.data?.['createFields']).toEqual({ done: true });
+  });
+  it('user should NOT access create api without required permission', async () => {
+    const createMutation = gql`
+      mutation createFields($id: Int!) {
+        createFields(id: $id) {
+          done
+        }
+      }
+    `;
+
+    const server = new ApolloServer<{
+      user: {
+        roles: Array<string>;
+      };
+    }>({
+      schema: schemaWithPermissionDirectiveWithDynamicPermission,
+      context: async () => ({
+        user: {
+          roles: ['USER'],
+        },
+        roleAndPermission: rolePermissionsData,
+      }),
+    });
+
+    const res = await server.executeOperation({
+      query: createMutation,
+      variables: {
+        id: 1,
+      },
+    });
+    expect(res.errors).toBeDefined();
+    expect(res.errors?.[0].message).toBe(
+      'Unauthorized access to Mutation.createFields'
+    );
+  });
+
+  it('user should access create api when given required permission', async () => {
+    const createMutation = gql`
+      mutation createFields($id: Int!) {
+        createFields(id: $id) {
+          done
+        }
+      }
+    `;
+
+    const rolePermissionsWithUserCreate: TRolePermission = {
+      ...rolePermissionsData,
+      USER: {
+        permissions: [
+          'READ_SECURE_DATA',
+          'READ_RESTRICTED_FIELD',
+          'READ_MUTATION_RESPONSE',
+          'CREATE_FIELD', // Now USER has CREATE_FIELD permission
+        ],
+      },
+    };
+
+    const server = new ApolloServer<{
+      user: {
+        roles: Array<string>;
+      };
+    }>({
+      schema: schemaWithPermissionDirectiveWithDynamicPermission,
+      context: async () => ({
+        user: {
+          roles: ['USER'],
+        },
+        roleAndPermission: rolePermissionsWithUserCreate,
       }),
     });
 

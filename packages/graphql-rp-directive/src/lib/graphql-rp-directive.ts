@@ -62,6 +62,43 @@ type MutationResponse @hasPermission(permissions: ["READ_MUTATION_RESPONSE"]) {
 
 `;
 
+const newTypeDefs = `
+directive @hasPermission(permissions: [String!]) on FIELD_DEFINITION | OBJECT
+
+type Query {
+  publicFields: PublicField
+  restrictedFields: RestrictedField @hasPermission(permissions: ["READ_RESTRICTED_FIELD"])
+  secureFields: SecureField @hasPermission(permissions: ["READ_SECURE_DATA"])
+  }
+
+type PublicField {
+  name: String!
+}
+type RestrictedField {
+  name: String!
+}
+
+type SecureField @hasPermission(permissions: ["READ_SECURE_DATA"]) {
+  name: String!
+  email: String!
+  posts: [Post]
+}
+
+type Post @hasPermission(permissions: ["READ_POST"]) {
+  title: String!
+  isPublished: Boolean!
+}
+
+type Mutation @hasPermission(permissions: ["CREATE_FIELD"]){
+  createFields(id: Int!): MutationResponse! 
+}
+
+type MutationResponse @hasPermission(permissions: ["READ_MUTATION_RESPONSE"]) {
+  done: Boolean!
+}
+
+`;
+
 const resolvers = {
   Query: {
     publicFields: () => ({ name: 'public field' }),
@@ -81,7 +118,7 @@ const resolvers = {
 };
 
 const schema = makeExecutableSchema({
-  typeDefs,
+  typeDefs: newTypeDefs,
   resolvers,
 });
 

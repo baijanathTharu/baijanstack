@@ -91,14 +91,17 @@ export function getAuthorizedSchema(
         'hasPermission'
       )?.[0];
       const fieldPermissions = fieldAuthDirective?.['permissions'] ?? [];
-
       // Inherit type-level permissions if field has no directive
       const typePermissions = typePermissionMapping.get(typeName) ?? [];
-      const effectivePermissions =
-        fieldPermissions.length > 0 ? fieldPermissions : typePermissions;
 
-      // If no permissions are set at all, deny access by default
-      if (effectivePermissions.length === 0) {
+      const shouldDeny = denyRequest({
+        fieldPermissions,
+        typePermissions,
+        fieldName,
+        typeName,
+      });
+
+      if (shouldDeny) {
         fieldConfig.resolve = () => {
           throw new Error(`Access denied for ${typeName}.${fieldName}`);
         };
@@ -113,8 +116,8 @@ export function getAuthorizedSchema(
 
         if (
           !isAuthorized({
-            fieldPermissions: effectivePermissions, // Use inherited permissions
-            typePermissions: [], // Already included in effectivePermissions
+            fieldPermissions,
+            typePermissions,
             user,
             ROLE_PERMISSIONS:
               dynamicRoleAndPermissionData ?? rolePermissionsData,
