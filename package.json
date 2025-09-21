@@ -5,6 +5,7 @@
   "scripts": {
     "lint:grpd": "nx run graphql-rp-directive:lint",
     "test:grpd": "nx run graphql-rp-directive:test",
+    "build:grpd": "nx run graphql-rp-directive:build",
     "publish:grpd": "npm run lint:grpd && npm run test:grpd && tsx tools/scripts/publish.ts graphql-rp-directive ${VERSION} ${TAG}",
     "lint:pfg": "nx run prisma-filter-generator:lint",
     "test:pfg": "nx run prisma-filter-generator:test",
