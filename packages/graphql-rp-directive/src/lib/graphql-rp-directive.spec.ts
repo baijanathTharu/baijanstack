@@ -559,5 +559,40 @@ describe('hasPermissionDirective', () => {
     expect(res.errors).toBeUndefined();
     expect(res?.data?.['createFields']).toEqual({ done: true });
   });
+
+  it('public should NOT access create api without required permission', async () => {
+    const createMutation = gql`
+      mutation createFields($id: Int!) {
+        createFields(id: $id) {
+          done
+        }
+      }
+    `;
+
+    const server = new ApolloServer<{
+      user: {
+        roles: Array<string>;
+      };
+    }>({
+      schema: schemaWithPermissionDirectiveWithDynamicPermission,
+      context: async () => ({
+        user: {
+          roles: ['PUBLIC'],
+        },
+        roleAndPermission: rolePermissionsData,
+      }),
+    });
+
+    const res = await server.executeOperation({
+      query: createMutation,
+      variables: {
+        id: 1,
+      },
+    });
+    expect(res.errors).toBeDefined();
+    expect(res.errors?.[0].message).toBe(
+      'Unauthorized access to Mutation.createFields'
+    );
+  });
   // ******** dynamic permissions test cases ends ********
 });
