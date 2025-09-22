@@ -34,19 +34,21 @@ function isAuthorized({
     role.permissions?.forEach((permission) => userPermissions.add(permission));
   });
 
+  // Check field permissions first if they exist
   for (const permission of fieldPermissions) {
     if (userPermissions.has(permission)) {
       return true;
     }
   }
 
-  if (fieldPermissions.length === 0) {
-    for (const typePermission of typePermissions) {
-      if (userPermissions.has(typePermission)) {
-        return true;
-      }
+  // Always check type permissions as well (inheritance)
+  // This ensures fields inherit type permissions even when they have their own
+  for (const typePermission of typePermissions) {
+    if (userPermissions.has(typePermission)) {
+      return true;
     }
   }
+
   return false;
 }
 
@@ -91,7 +93,7 @@ export function getAuthorizedSchema(
         'hasPermission'
       )?.[0];
       const fieldPermissions = fieldAuthDirective?.['permissions'] ?? [];
-      // Inherit type-level permissions if field has no directive
+      // Always get type-level permissions for inheritance
       const typePermissions = typePermissionMapping.get(typeName) ?? [];
 
       const shouldDeny = denyRequest({
@@ -108,16 +110,22 @@ export function getAuthorizedSchema(
         return fieldConfig;
       }
 
+      // Fields always inherit type permissions, and may have their own as well
+      const effectiveFieldPermissions =
+        fieldPermissions.length > 0 ? fieldPermissions : typePermissions;
+      const effectiveTypePermissions = typePermissions;
+
       const originalResolver = fieldConfig.resolve ?? defaultFieldResolver;
 
       fieldConfig.resolve = async (source, args, context, info) => {
         const user = context.user;
         const dynamicRoleAndPermissionData = context.roleAndPermission;
 
+        // This will now check both field AND type permissions
         if (
           !isAuthorized({
-            fieldPermissions,
-            typePermissions,
+            fieldPermissions: effectiveFieldPermissions,
+            typePermissions: effectiveTypePermissions,
             user,
             ROLE_PERMISSIONS:
               dynamicRoleAndPermissionData ?? rolePermissionsData,

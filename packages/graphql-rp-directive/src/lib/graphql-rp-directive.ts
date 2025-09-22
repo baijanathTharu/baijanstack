@@ -65,7 +65,7 @@ type MutationResponse @hasPermission(permissions: ["READ_MUTATION_RESPONSE"]) {
 const newTypeDefs = `
 directive @hasPermission(permissions: [String!]) on FIELD_DEFINITION | OBJECT
 
-type Query {
+type Query  {
   publicFields: PublicField
   restrictedFields: RestrictedField @hasPermission(permissions: ["READ_RESTRICTED_FIELD"])
   secureFields: SecureField @hasPermission(permissions: ["READ_SECURE_DATA"])
