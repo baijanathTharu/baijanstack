@@ -429,7 +429,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       return this.app.post(
         `${this.config.BASE_PATH}/refresh`,
         this.validateRefreshToken,
-        this.validateSessionDeviceInfo,
+        // !FIXME: add this middleware with proper implementation of the session manager
+        // this.validateSessionDeviceInfo,
         async (req, res) => {
           try {
             // @ts-expect-error have been attached on the request
