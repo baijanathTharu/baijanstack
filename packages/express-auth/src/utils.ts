@@ -121,6 +121,7 @@ export function setCookies({
     cookieName: string;
     cookieValue: string;
     maxAge: number;
+    domain?: string;
   }>;
 }) {
   for (const cookie of cookieData) {
@@ -130,6 +131,7 @@ export function setCookies({
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env['NODE_ENV'] === 'production',
+      ...(cookie.domain && { domain: cookie.domain }),
     });
   }
 }
