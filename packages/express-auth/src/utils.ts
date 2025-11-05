@@ -121,7 +121,7 @@ export function setCookies({
     cookieName: string;
     cookieValue: string;
     maxAge: number;
-    domain?: string;
+    domain: string | undefined;
   }>;
 }) {
   for (const cookie of cookieData) {

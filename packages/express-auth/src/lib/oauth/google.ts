@@ -151,11 +151,13 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
                 cookieName: 'x-access-token',
                 cookieValue: tokens.accessToken,
                 maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+                domain: this.config.COOKIE_DOMAIN,
               },
               {
                 cookieName: 'x-refresh-token',
                 cookieValue: tokens.refreshToken,
                 maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+                domain: this.config.COOKIE_DOMAIN,
               },
             ],
           });
