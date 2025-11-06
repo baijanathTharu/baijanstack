@@ -385,6 +385,8 @@ const authConfig: TConfig = {
   GOOGLE_FAILURE_REDIRECT_URI: process.env.GOOGLE_FAILURE_REDIRECT_URI,
 
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN, // for setting up cookie for this domain
+  COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE, // by default it is 'lax'
+  COOKIE_SECURE: process.env.COOKIE_SECURE, // by default it is false
 };
 ```
 

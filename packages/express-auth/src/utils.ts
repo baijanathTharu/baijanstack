@@ -129,8 +129,8 @@ export function setCookies({
       path: '/',
       maxAge: cookie.maxAge,
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env['NODE_ENV'] === 'production',
+      sameSite: (process.env['COOKIE_SAME_SITE'] as any) || 'lax',
+      secure: (process.env['COOKIE_SECURE'] as any) || false,
       ...(cookie.domain && { domain: cookie.domain }),
     });
   }

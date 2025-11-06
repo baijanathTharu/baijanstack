@@ -52,6 +52,18 @@ export type TConfig = {
    * Domains for cookies
    */
   COOKIE_DOMAIN?: string;
+
+  /**
+   * COOKIE SAME-SITE POLICY
+   * By default `lax`
+   */
+  COOKIE_SAME_SITE?: 'lax' | 'strict' | 'none';
+
+  /**
+   * COOKIE SAME-SITE POLICY
+   * By default false
+   */
+  COOKIE_SECURE?: boolean;
 };
 
 export interface ISignUpHandler {
