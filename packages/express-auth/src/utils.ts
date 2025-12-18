@@ -122,6 +122,8 @@ export function setCookies({
     cookieValue: string;
     maxAge: number;
     domain: string | undefined;
+    sameSite?: 'strict' | 'lax' | 'none';
+    secure?: boolean;
   }>;
 }) {
   for (const cookie of cookieData) {
@@ -129,8 +131,8 @@ export function setCookies({
       path: '/',
       maxAge: cookie.maxAge,
       httpOnly: true,
-      sameSite: (process.env['COOKIE_SAME_SITE'] as any) || 'lax',
-      secure: (process.env['COOKIE_SECURE'] as any) || false,
+      sameSite: cookie.sameSite || 'lax',
+      secure: cookie.secure || false,
       ...(cookie.domain && { domain: cookie.domain }),
     });
   }
