@@ -60,10 +60,13 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
               return done(new Error('No email found in Google profile'), null);
             }
 
+            const profileImage = googleProfile.photos[0]?.value || '';
+
             req.user = {
               email: email,
               displayName: googleProfile.displayName,
               id: googleProfile.id,
+              profileImage,
             } as TGoogleProfile;
 
             await oauthHandler.createOrUpdateUser({
@@ -71,6 +74,7 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
               provider: AuthProvider.GOOGLE,
               googleId: googleProfile.id,
               displayName: googleProfile.displayName,
+              profileImage,
             });
 
             return done(null, profile);

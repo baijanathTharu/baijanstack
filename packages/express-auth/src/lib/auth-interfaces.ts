@@ -220,6 +220,7 @@ export interface IOAuthHandler {
     googleId: string;
     provider: AuthProvider;
     displayName?: string;
+    profileImage?: string;
   }) => Promise<boolean>;
 
   /**
@@ -242,4 +243,5 @@ export type TGoogleProfile = {
   id: string;
   displayName: string;
   email: string;
+  profileImage: string;
 };
