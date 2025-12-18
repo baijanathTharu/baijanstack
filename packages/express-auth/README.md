@@ -305,7 +305,7 @@ export class GoogleOAuthHandler implements IOAuthHandler {
    * Called when a user authenticates via Google.
    * You should create or update the user in your database here.
    */
-  async createOrUpdateUser({ email, provider, googleId, displayName }) {
+  async createOrUpdateUser({ email, provider, googleId, displayName, profileImage }) {
     let user = this.users.find((u) => u.email === email);
     if (!user) {
       user = {
