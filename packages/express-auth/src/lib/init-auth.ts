@@ -13,6 +13,7 @@ import {
 } from './auth-interfaces';
 import { RouteGenerator } from './auth';
 import { GoogleAuthGenerator } from './oauth/google';
+import { GithubAuthGenerator } from './oauth/github';
 
 export function initAuth({
   routeGenerator,
@@ -26,6 +27,7 @@ export function initAuth({
   forgotPasswordHandler,
   sendOtpHandler,
   googleOAuth,
+  githubOAuth,
 }: {
   routeGenerator: RouteGenerator;
   signUpHandler: ISignUpHandler;
@@ -40,6 +42,10 @@ export function initAuth({
   googleOAuth?: {
     oAuthHandler: IOAuthHandler;
     generator: GoogleAuthGenerator;
+  };
+  githubOAuth?: {
+    oAuthHandler: IOAuthHandler;
+    generator: GithubAuthGenerator;
   };
 }) {
   // sign up route
@@ -71,6 +77,10 @@ export function initAuth({
 
   if (googleOAuth) {
     googleOAuth.generator.createOAuthRoute(AuthProvider.GOOGLE);
+  }
+
+  if (githubOAuth) {
+    githubOAuth.generator.createOAuthRoute(AuthProvider.GITHUB);
   }
 
   return routeGenerator;

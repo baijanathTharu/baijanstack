@@ -9,6 +9,7 @@ import {
   IForgotPasswordHandler,
   ISendOtpHandler,
   IOAuthHandler,
+  AuthProvider,
 } from '../auth-interfaces';
 
 export type TUser = {
@@ -190,7 +191,7 @@ export class ForgotPasswordHandler implements IForgotPasswordHandler {
 export class GoogleOAuthHandler implements IOAuthHandler {
   createOrUpdateUser: (payload: {
     email: string;
-    googleId: string;
+    providerId: string;
     provider: string;
     displayName?: string;
   }) => Promise<boolean> = async (payload) => {
@@ -231,6 +232,49 @@ export class GoogleOAuthHandler implements IOAuthHandler {
     return {
       email: user?.email,
       name: user?.name,
+    };
+  };
+}
+
+export class GithubOAuthHandler implements IOAuthHandler {
+  createOrUpdateUser: (payload: {
+    email: string;
+    providerId: string;
+    provider: AuthProvider;
+    displayName?: string;
+  }) => Promise<boolean> = async (payload) => {
+    const userIdx = users.findIndex((user) => user.email === payload.email);
+
+    if (userIdx >= 0) {
+      users[userIdx] = {
+        ...users[userIdx],
+        name: payload.displayName || users[userIdx].name,
+      };
+
+      return true;
+    } else {
+      users.push({
+        name: payload.displayName || '',
+        email: payload.email,
+        password: '', // Password is not used for OAuth users
+        is_email_verified: true, // Assume email is verified for OAuth users
+      });
+
+      console.log('New user created:', users[users.length - 1]);
+      return true; // User was created
+    }
+  };
+
+  getTokenPayload: (email: string) => Promise<any> = async (email) => {
+    const user = users.find((user) => user.email === email);
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      email: user.email,
+      name: user.name,
     };
   };
 }

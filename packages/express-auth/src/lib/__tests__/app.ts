@@ -1,6 +1,6 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import { config, googleConfig } from './config';
+import { config, githubConfig, googleConfig } from './config';
 import { RouteGenerator, validateAccessToken } from '../auth';
 import { EmailNotificationService } from './notifier';
 import { initAuth } from '../init-auth';
@@ -15,8 +15,10 @@ import {
   ForgotPasswordHandler,
   SendOtpHandler,
   GoogleOAuthHandler,
+  GithubOAuthHandler,
 } from './handlers';
 import { GoogleAuthGenerator } from '../oauth/google';
+import { GithubAuthGenerator } from '../oauth/github';
 
 const app = express();
 app.use(express.json());
@@ -44,7 +46,8 @@ const routeGenerator = new RouteGenerator(
   new EmailNotificationService(),
   config
 );
-const oAuthHandler = new GoogleOAuthHandler();
+const googleOAuthHandler = new GoogleOAuthHandler();
+const githubOAuthHandler = new GithubOAuthHandler();
 
 const googleGenerator = new GoogleAuthGenerator(
   app,
@@ -52,7 +55,16 @@ const googleGenerator = new GoogleAuthGenerator(
     ...config,
     ...googleConfig,
   },
-  oAuthHandler
+  googleOAuthHandler
+);
+
+const githubGenerator = new GithubAuthGenerator(
+  app,
+  {
+    ...config,
+    ...githubConfig,
+  },
+  githubOAuthHandler
 );
 
 initAuth({
@@ -68,7 +80,11 @@ initAuth({
   sendOtpHandler: new SendOtpHandler(),
   googleOAuth: {
     generator: googleGenerator,
-    oAuthHandler,
+    oAuthHandler: googleOAuthHandler,
+  },
+  githubOAuth: {
+    generator: githubGenerator,
+    oAuthHandler: githubOAuthHandler,
   },
 });
 

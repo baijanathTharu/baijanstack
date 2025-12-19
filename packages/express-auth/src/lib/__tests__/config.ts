@@ -4,7 +4,11 @@ dotenv.config({
   path: '.env',
 });
 
-import { TConfig, TGoogleAuthConfig } from '../auth-interfaces';
+import {
+  TConfig,
+  TGithubAuthConfig,
+  TGoogleAuthConfig,
+} from '../auth-interfaces';
 
 export const config: TConfig = {
   BASE_PATH: '/v1/auth',
@@ -23,4 +27,12 @@ export const googleConfig: TGoogleAuthConfig = {
     process.env['GOOGLE_CLIENT_SECRET'] || 'test-client-secret',
   GOOGLE_FAILURE_REDIRECT_URI: '/v1/auth/google/failure',
   GOOGLE_SUCCESS_REDIRECT_URI: '/protected',
+};
+
+export const githubConfig: TGithubAuthConfig = {
+  GITHUB_CLIENT_ID: process.env['GITHUB_CLIENT_ID'] || 'test-client-id',
+  GITHUB_CLIENT_SECRET:
+    process.env['GITHUB_CLIENT_SECRET'] || 'test-client-secret',
+  GITHUB_FAILURE_REDIRECT_URI: '/v1/auth/github/failure',
+  GITHUB_SUCCESS_REDIRECT_URI: '/protected',
 };
