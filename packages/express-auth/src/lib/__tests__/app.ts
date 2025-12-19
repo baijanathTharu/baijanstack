@@ -14,8 +14,7 @@ import {
   VerifyEmailHandler,
   ForgotPasswordHandler,
   SendOtpHandler,
-  GoogleOAuthHandler,
-  GithubOAuthHandler,
+  OAuthHandler,
 } from './handlers';
 import { GoogleAuthGenerator } from '../oauth/google';
 import { GithubAuthGenerator } from '../oauth/github';
@@ -46,8 +45,8 @@ const routeGenerator = new RouteGenerator(
   new EmailNotificationService(),
   config
 );
-const googleOAuthHandler = new GoogleOAuthHandler();
-const githubOAuthHandler = new GithubOAuthHandler();
+
+const oAuthHandler = new OAuthHandler();
 
 const googleGenerator = new GoogleAuthGenerator(
   app,
@@ -55,7 +54,7 @@ const googleGenerator = new GoogleAuthGenerator(
     ...config,
     ...googleConfig,
   },
-  googleOAuthHandler
+  oAuthHandler
 );
 
 const githubGenerator = new GithubAuthGenerator(
@@ -64,7 +63,7 @@ const githubGenerator = new GithubAuthGenerator(
     ...config,
     ...githubConfig,
   },
-  githubOAuthHandler
+  oAuthHandler
 );
 
 initAuth({
@@ -80,11 +79,11 @@ initAuth({
   sendOtpHandler: new SendOtpHandler(),
   googleOAuth: {
     generator: googleGenerator,
-    oAuthHandler: googleOAuthHandler,
+    oAuthHandler,
   },
   githubOAuth: {
     generator: githubGenerator,
-    oAuthHandler: githubOAuthHandler,
+    oAuthHandler,
   },
 });
 

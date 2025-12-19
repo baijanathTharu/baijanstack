@@ -675,3 +675,4 @@ function validateAuth(accessToken: string) {
 - [Baijanath Tharu](https://github.com/baijanathTharu)
 - [Santosh Kunwar](https://github.com/codemon77)
 - [Susan Shakya](https://github.com/susan-shakya1)
+- [Sujal Gaha Magar](https://github.com/Sujal-Gaha)

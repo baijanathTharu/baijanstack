@@ -37,7 +37,6 @@ export class GithubAuthGenerator implements IOAuthGenerator {
         },
         async function (req: any, profile: any, done: any) {
           try {
-            console.log(req);
             const githubProfile = {
               id: profile.id,
               displayName: profile.displayName,
@@ -46,7 +45,7 @@ export class GithubAuthGenerator implements IOAuthGenerator {
                   value: e.value,
                   verfied: e.verfied,
                 })) || [],
-              photos: profile.photoes || [],
+              photos: profile.photos || [],
               _json: profile._json || null,
             };
 
@@ -158,6 +157,7 @@ export class GithubAuthGenerator implements IOAuthGenerator {
             message: 'Internal server error',
             code: OAuthResponseCodes.INTERNAL_SERVER_ERROR,
           });
+          return;
         }
       }
     );

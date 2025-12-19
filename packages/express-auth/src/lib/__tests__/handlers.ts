@@ -236,7 +236,7 @@ export class GoogleOAuthHandler implements IOAuthHandler {
   };
 }
 
-export class GithubOAuthHandler implements IOAuthHandler {
+export class OAuthHandler implements IOAuthHandler {
   createOrUpdateUser: (payload: {
     email: string;
     providerId: string;
@@ -261,7 +261,7 @@ export class GithubOAuthHandler implements IOAuthHandler {
       });
 
       console.log('New user created:', users[users.length - 1]);
-      return true; // User was created
+      return true;
     }
   };
 

@@ -7,11 +7,10 @@ import { initAuth } from '../init-auth';
 import { RouteGenerator, validateAccessToken } from '../auth';
 import {
   ForgotPasswordHandler,
-  GithubOAuthHandler,
-  GoogleOAuthHandler,
   LoginHandler,
   LogoutHandler,
   MeRouteHandler,
+  OAuthHandler,
   RefreshHandler,
   ResetPasswordHandler,
   SendOtpHandler,
@@ -69,8 +68,7 @@ describe('expressAuth', () => {
       });
     });
 
-    const googleOAuthHandler = new GoogleOAuthHandler();
-    const githubOAuthHandler = new GithubOAuthHandler();
+    const oAuthHandler = new OAuthHandler();
 
     const googleGenerator = new GoogleAuthGenerator(
       app,
@@ -78,7 +76,7 @@ describe('expressAuth', () => {
         ...config,
         ...googleConfig,
       },
-      googleOAuthHandler
+      oAuthHandler
     );
     const githubGenerator = new GithubAuthGenerator(
       app,
@@ -86,7 +84,7 @@ describe('expressAuth', () => {
         ...config,
         ...githubConfig,
       },
-      githubOAuthHandler
+      oAuthHandler
     );
 
     const routeGenerator = new RouteGenerator(
@@ -108,11 +106,11 @@ describe('expressAuth', () => {
       sendOtpHandler: new SendOtpHandler(),
       googleOAuth: {
         generator: googleGenerator,
-        oAuthHandler: googleOAuthHandler,
+        oAuthHandler,
       },
       githubOAuth: {
         generator: githubGenerator,
-        oAuthHandler: githubOAuthHandler,
+        oAuthHandler,
       },
     });
   });
