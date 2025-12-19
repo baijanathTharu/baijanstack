@@ -383,6 +383,8 @@ const authConfig: TConfig = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GOOGLE_SUCCESS_REDIRECT_URI: process.env.GOOGLE_SUCCESS_REDIRECT_URI,
   GOOGLE_FAILURE_REDIRECT_URI: process.env.GOOGLE_FAILURE_REDIRECT_URI,
+
+  COOKIE_DOMAIN: process.env.COOKIE_DOMAIN, // for setting up cookie for this domain
 };
 ```
 

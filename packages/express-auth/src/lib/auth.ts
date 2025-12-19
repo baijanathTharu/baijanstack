@@ -208,11 +208,13 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
               cookieName: 'x-access-token',
               cookieValue: tokens.accessToken,
               maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+              domain: this.config.COOKIE_DOMAIN,
             },
             {
               cookieName: 'x-refresh-token',
               cookieValue: tokens.refreshToken,
               maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+              domain: this.config.COOKIE_DOMAIN,
             },
           ],
         });
@@ -429,7 +431,8 @@ export class RouteGenerator implements IRouteGenerator, IRouteMiddlewares {
       return this.app.post(
         `${this.config.BASE_PATH}/refresh`,
         this.validateRefreshToken,
-        this.validateSessionDeviceInfo,
+        // !FIXME: add this middleware with proper implementation of the session manager
+        // this.validateSessionDeviceInfo,
         async (req, res) => {
           try {
             // @ts-expect-error have been attached on the request

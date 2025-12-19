@@ -47,6 +47,11 @@ export type TConfig = {
    * Provide the 6 digits otp here.
    */
   TEST_OTP?: string;
+
+  /**
+   * Domains for cookies
+   */
+  COOKIE_DOMAIN?: string;
 };
 
 export interface ISignUpHandler {
