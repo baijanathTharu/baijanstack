@@ -316,39 +316,51 @@ You must implement a handler that conforms to the `IOAuthHandler` interface. Her
 import { IOAuthHandler, AuthProvider } from '@baijanstack/express-auth';
 
 export class OAuthHandler implements IOAuthHandler {
+  // Simulated user store
+  private users: any[] = [];
+
   createOrUpdateUser: (payload: { email: string; providerId: string; provider: AuthProvider; displayName?: string }) => Promise<boolean> = async (payload) => {
-    const userIdx = users.findIndex((user) => user.email === payload.email);
+    let user = this.users.find((u) => u.email === email);
+    if (!user) {
+      user = {
+        email,
+        provider,
+        providerId,
+        displayName,
+        is_email_verified: true,
+      };
+    }
 
     if (userIdx >= 0) {
       users[userIdx] = {
         ...users[userIdx],
         name: payload.displayName || users[userIdx].name,
       };
-
-      return true;
+      this.users.push(user);
     } else {
-      users.push({
-        name: payload.displayName || '',
-        email: payload.email,
-        password: '', // Password is not used for OAuth users
-        is_email_verified: true, // Assume email is verified for OAuth users
-      });
+      user.providerId = providerId;
+      user.displayName = displayName;
+      user.provider = provider;
 
       console.log('New user created:', users[users.length - 1]);
       return true;
     }
   };
 
+  /**
+   * Returns the payload to be signed in JWT tokens.
+   */
   getTokenPayload: (email: string) => Promise<any> = async (email) => {
     const user = users.find((user) => user.email === email);
 
     if (!user) {
-      return null;
+      throw new Error('User not found');
     }
 
     return {
       email: user.email,
       name: user.name,
+      provider: user.provider,
     };
   };
 }
