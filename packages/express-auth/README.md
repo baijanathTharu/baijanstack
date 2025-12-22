@@ -323,7 +323,7 @@ export class OAuthHandler implements IOAuthHandler {
    * Called when a user authenticates via Google.
    * You should create or update the user in your database here.
    */
-  createOrUpdateUser: (payload: { email: string; providerId: string; provider: AuthProvider; displayName?: string }) => Promise<boolean> = async (payload) => {
+  createOrUpdateUser({ email, provider, googleId, displayName }) {
     let user = this.users.find((u) => u.email === email);
     if (!user) {
       user = {
@@ -333,13 +333,6 @@ export class OAuthHandler implements IOAuthHandler {
         displayName,
         is_email_verified: true,
       };
-    }
-
-    if (userIdx >= 0) {
-      users[userIdx] = {
-        ...users[userIdx],
-        name: payload.displayName || users[userIdx].name,
-      };
       this.users.push(user);
     } else {
       user.providerId = providerId;
@@ -347,13 +340,13 @@ export class OAuthHandler implements IOAuthHandler {
       user.provider = provider;
     }
     return user;
-  };
+  }
 
   /**
    * Returns the payload to be signed in JWT tokens.
    */
-  getTokenPayload: (email: string) => Promise<any> = async (email) => {
-    const user = users.find((user) => user.email === email);
+  getTokenPayload(email: string) {
+    const user = this.users.find((u) => u.email === email);
 
     if (!user) {
       throw new Error('User not found');
@@ -364,7 +357,7 @@ export class OAuthHandler implements IOAuthHandler {
       name: user.displayName,
       provider: user.provider,
     };
-  };
+  }
 }
 ```
 
