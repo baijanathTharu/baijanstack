@@ -323,7 +323,7 @@ export class OAuthHandler implements IOAuthHandler {
    * Called when a user authenticates via Google.
    * You should create or update the user in your database here.
    */
-  createOrUpdateUser({ email, provider, googleId, displayName }) {
+  async createOrUpdateUser({ email, provider, googleId, displayName }) {
     let user = this.users.find((u) => u.email === email);
     if (!user) {
       user = {
@@ -345,7 +345,7 @@ export class OAuthHandler implements IOAuthHandler {
   /**
    * Returns the payload to be signed in JWT tokens.
    */
-  getTokenPayload(email: string) {
+  async getTokenPayload(email: string) {
     const user = this.users.find((u) => u.email === email);
 
     if (!user) {
