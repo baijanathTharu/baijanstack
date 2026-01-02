@@ -2,15 +2,15 @@ import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 
-import { config, googleConfig } from './config';
+import { config, githubConfig, googleConfig } from './config';
 import { initAuth } from '../init-auth';
 import { RouteGenerator, validateAccessToken } from '../auth';
 import {
   ForgotPasswordHandler,
-  GoogleOAuthHandler,
   LoginHandler,
   LogoutHandler,
   MeRouteHandler,
+  OAuthHandler,
   RefreshHandler,
   ResetPasswordHandler,
   SendOtpHandler,
@@ -21,6 +21,7 @@ import { EmailNotificationService } from './notifier';
 import { LoginResponseCodes, SignUpResponseCodes } from '../response-codes';
 import { GoogleAuthGenerator } from '../oauth/google';
 import passport from 'passport';
+import { GithubAuthGenerator } from '../oauth/github';
 
 /**
  * set the env variable
@@ -67,12 +68,21 @@ describe('expressAuth', () => {
       });
     });
 
-    const oAuthHandler = new GoogleOAuthHandler();
+    const oAuthHandler = new OAuthHandler();
+
     const googleGenerator = new GoogleAuthGenerator(
       app,
       {
         ...config,
         ...googleConfig,
+      },
+      oAuthHandler
+    );
+    const githubGenerator = new GithubAuthGenerator(
+      app,
+      {
+        ...config,
+        ...githubConfig,
       },
       oAuthHandler
     );
@@ -96,6 +106,10 @@ describe('expressAuth', () => {
       sendOtpHandler: new SendOtpHandler(),
       googleOAuth: {
         generator: googleGenerator,
+        oAuthHandler,
+      },
+      githubOAuth: {
+        generator: githubGenerator,
         oAuthHandler,
       },
     });
@@ -275,5 +289,14 @@ describe('expressAuth', () => {
     // @ts-expect-error may need typing
     const location = res.header.location;
     expect(location).toBe(googleConfig.GOOGLE_SUCCESS_REDIRECT_URI);
+  });
+
+  it('should mock Github OAuth callback and return user', async () => {
+    const res = await request(app).get(`${config.BASE_PATH}/github/callback`);
+
+    expect(res.status).toBe(302);
+    // @ts-expect-error may need typing
+    const location = res.header.location;
+    expect(location).toBe(githubConfig.GITHUB_SUCCESS_REDIRECT_URI);
   });
 });

@@ -1,80 +1,70 @@
-import { Application as ExpressApplication } from 'express';
 import {
   AuthProvider,
   IOAuthGenerator,
   IOAuthHandler,
   TConfig,
-  TGoogleAuthConfig,
-  TGoogleProfile,
+  TGithubAuthConfig,
+  TGithubProfile,
 } from '../auth-interfaces';
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth2';
-import { OAuthResponseCodes } from '../response-codes';
+import { Application as ExpressApplication } from 'express';
 import { SessionManager } from '../session-interfaces';
+import passport from 'passport';
+import { Strategy as GitHubStrategy } from 'passport-github';
+import { OAuthResponseCodes } from '../response-codes';
 import {
   extractDeviceIdentifier,
   generateTokens,
   setCookies,
 } from '../../utils';
 
-export class GoogleAuthGenerator implements IOAuthGenerator {
+export class GithubAuthGenerator implements IOAuthGenerator {
   constructor(
     private app: ExpressApplication,
-    private config: TConfig & TGoogleAuthConfig,
+    private config: TConfig & TGithubAuthConfig,
     private oauthHandler: IOAuthHandler,
     private sessionManager?: SessionManager
   ) {
-    if (!config.GOOGLE_CLIENT_ID || !config.GOOGLE_CLIENT_SECRET) {
-      throw new Error('Google client ID and secret must be provided');
+    if (!config.GITHUB_CLIENT_ID || !config.GITHUB_CLIENT_SECRET) {
+      throw new Error('Github client ID and secret must be provided');
     }
     passport.use(
-      new GoogleStrategy(
+      new GitHubStrategy(
         {
-          clientID: this.config.GOOGLE_CLIENT_ID,
-          clientSecret: this.config.GOOGLE_CLIENT_SECRET,
-          callbackURL: `${this.config.BASE_PATH}/google/callback`,
+          clientID: this.config.GITHUB_CLIENT_ID,
+          clientSecret: this.config.GITHUB_CLIENT_SECRET,
+          callbackURL: `${this.config.BASE_PATH}/github/callback`,
           passReqToCallback: true,
         },
-        async function (
-          req: any,
-          accessToken: any,
-          refreshToken: any,
-          profile: any,
-          done: any
-        ) {
+        async function (req: any, profile: any, done: any) {
           try {
-            const googleProfile = {
+            const githubProfile = {
               id: profile.id,
               displayName: profile.displayName,
               emails:
                 profile.emails?.map((e: any) => ({
                   value: e.value,
-                  verified: e.verified,
+                  verfied: e.verfied,
                 })) || [],
               photos: profile.photos || [],
               _json: profile._json || null,
             };
 
-            const email = googleProfile.emails[0]?.value;
+            const email = githubProfile.emails[0]?.value;
             if (!email) {
-              return done(new Error('No email found in Google profile'), null);
+              return done(new Error('No email found in Github profile'), null);
             }
 
-            const profileImage = googleProfile.photos[0]?.value || '';
-
             req.user = {
+              id: githubProfile.id,
               email: email,
-              displayName: googleProfile.displayName,
-              id: googleProfile.id,
-              profileImage,
-            } as TGoogleProfile;
+              displayName: githubProfile.displayName,
+            } as TGithubProfile;
 
             await oauthHandler.createOrUpdateUser({
               email: email,
-              provider: AuthProvider.GOOGLE,
-              providerId: googleProfile.id,
-              displayName: googleProfile.displayName,
-              profileImage,
+              provider: AuthProvider.GITHUB,
+              providerId: githubProfile.id,
+              displayName: githubProfile.displayName,
             });
 
             return done(null, profile);
@@ -86,29 +76,27 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
       )
     );
   }
-
   createOAuthRoute: (provider: AuthProvider) => ExpressApplication = () => {
     this.app.get(
-      `${this.config.BASE_PATH}/google`,
-      passport.authenticate('google', {
+      `${this.config.BASE_PATH}/github`,
+      passport.authenticate('github', {
         scope: ['email', 'profile'],
-        successRedirect: `${this.config.BASE_PATH}/google/callback`,
-        failureRedirect: this.config.GOOGLE_FAILURE_REDIRECT_URI,
+        successRedirect: `${this.config.BASE_PATH}/github/callback`,
+        failureRedirect: this.config.GITHUB_FAILURE_REDIRECT_URI,
         session: false,
       })
     );
 
     return this.app.get(
-      `${this.config.BASE_PATH}/google/callback`,
-      passport.authenticate('google', {
+      `${this.config.BASE_PATH}/github/callback`,
+      passport.authenticate('github', {
         scope: ['email', 'profile'],
-        failureRedirect: this.config.GOOGLE_FAILURE_REDIRECT_URI,
-        // successRedirect: this.config.GOOGLE_SUCCESS_REDIRECT_URI,
+        failureRedirect: this.config.GITHUB_FAILURE_REDIRECT_URI,
         session: false,
       }),
       async (req, res) => {
         try {
-          const user = req.user as TGoogleProfile;
+          const user = req.user as TGithubProfile;
 
           if (!user) {
             res.status(401).json({
@@ -117,10 +105,6 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
             });
             return;
           }
-
-          /**
-           * Generate tokens for the user
-           */
 
           const payload = await this.oauthHandler.getTokenPayload(user.email);
           if (!payload) {
@@ -132,7 +116,7 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
           }
 
           const tokens = generateTokens(payload, {
-            tokenSecret: this.config?.TOKEN_SECRET ?? '',
+            tokenSecret: this.config.TOKEN_SECRET ?? '',
             ACCESS_TOKEN_AGE: this.config.ACCESS_TOKEN_AGE,
             REFRESH_TOKEN_AGE: this.config.REFRESH_TOKEN_AGE,
           });
@@ -170,11 +154,11 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
             ],
           });
 
-          res.redirect(this.config.GOOGLE_SUCCESS_REDIRECT_URI);
+          res.redirect(this.config.GITHUB_SUCCESS_REDIRECT_URI);
 
           return;
         } catch (error) {
-          console.error(`Error during Google OAuth callback:`, error);
+          console.error('Error during Github OAuth callback:', error);
           res.status(500).json({
             message: 'Internal server error',
             code: OAuthResponseCodes.INTERNAL_SERVER_ERROR,

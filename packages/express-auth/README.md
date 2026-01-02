@@ -230,11 +230,11 @@ This route is used to get an OTP for verification. [otplib](https://www.npmjs.co
 
 ---
 
-## Google OAuth Integration
+## OAuth Integration
 
-This package supports authentication via Google OAuth 2.0 in addition to email-password. You can enable Google login for your Express app with minimal setup.
+This package supports authentication via OAuth 2.0 in addition to email-password. You can enable login for your Express app with minimal setup.
 
-### Required Environment Variables
+### Required Environment Variables For Google
 
 Set these environment variables in your `.env` file or deployment environment:
 
@@ -243,9 +243,18 @@ Set these environment variables in your `.env` file or deployment environment:
 - `GOOGLE_SUCCESS_REDIRECT_URI`: URI to redirect users after successful login (e.g., `http://localhost:3000/success`).
 - `GOOGLE_FAILURE_REDIRECT_URI`: URI to redirect users after failed login (e.g., `http://localhost:3000/failure`).
 
+### Required Environment Variables For Github
+
+Set these environment variables in your `.env` file or deployment environment:
+
+- `GITHUB_CLIENT_ID`: Your Github OAuth client ID.
+- `GITHUB_CLIENT_SECRET`: Your Github OAuth client secret.
+- `GITHUB_SUCCESS_REDIRECT_URI`: URI to redirect users after successful login (e.g., `http://localhost:3000/success`).
+- `Github_FAILURE_REDIRECT_URI`: URI to redirect users after failed login (e.g., `http://localhost:3000/failure`).
+
 ### Usage Example
 
-Add Google OAuth config to your main config object:
+Add OAuth config to your main config object:
 
 ```ts
 const config = {
@@ -260,17 +269,22 @@ const config = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GOOGLE_SUCCESS_REDIRECT_URI: process.env.GOOGLE_SUCCESS_REDIRECT_URI,
   GOOGLE_FAILURE_REDIRECT_URI: process.env.GOOGLE_FAILURE_REDIRECT_URI,
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  GITHUB_SUCCESS_REDIRECT_URI: process.env.GITHUB_SUCCESS_REDIRECT_URI,
+  GITHUB_FAILURE_REDIRECT_URI: process.env.GITHUB_FAILURE_REDIRECT_URI,
 };
 ```
 
-Create and use the GoogleAuthGenerator and handler:
+Create and use the auth generators and handler:
 
 ```ts
-import { GoogleAuthGenerator } from '@baijanstack/express-auth';
+import { GoogleAuthGenerator, GithubAuthGenerator, OAuthHandler } from '@baijanstack/express-auth';
 
-const oAuthHandler = new GoogleOAuthHandler();
+const oAuthHandler = new OAuthHandler();
 
 const googleGenerator = new GoogleAuthGenerator(app, config, oAuthHandler);
+const githubGenerator = new GithubAuthGenerator(app, config, oAuthHandler);
 
 initAuth({
   routeGenerator,
@@ -287,17 +301,21 @@ initAuth({
     generator: googleGenerator,
     oAuthHandler,
   },
+  githubOAuth: {
+    generator: githubGenerator,
+    oAuthHandler,
+  },
 });
 ```
 
-### Implementing GoogleOAuthHandler
+### Implementing OAuthHandler
 
 You must implement a handler that conforms to the `IOAuthHandler` interface. Here is a ready-to-use example:
 
 ```ts
 import { IOAuthHandler, AuthProvider } from '@baijanstack/express-auth';
 
-export class GoogleOAuthHandler implements IOAuthHandler {
+export class OAuthHandler implements IOAuthHandler {
   // Simulated user store
   private users: any[] = [];
 
@@ -311,13 +329,13 @@ export class GoogleOAuthHandler implements IOAuthHandler {
       user = {
         email,
         provider,
-        googleId,
+        providerId,
         displayName,
         is_email_verified: true,
       };
       this.users.push(user);
     } else {
-      user.googleId = googleId;
+      user.providerId = providerId;
       user.displayName = displayName;
       user.provider = provider;
     }
@@ -329,12 +347,14 @@ export class GoogleOAuthHandler implements IOAuthHandler {
    */
   async getTokenPayload(email: string) {
     const user = this.users.find((u) => u.email === email);
+
     if (!user) {
       throw new Error('User not found');
     }
+
     return {
       email: user.email,
-      name: user.displayName || 'Google User',
+      name: user.displayName,
       provider: user.provider,
     };
   }
@@ -346,14 +366,19 @@ export class GoogleOAuthHandler implements IOAuthHandler {
 - `GET /v1/auth/google`: Initiates Google OAuth login.
 - `GET /v1/auth/google/callback`: Handles Google OAuth callback.
 
-On successful authentication, access and refresh tokens are set in cookies and the user is redirected to `GOOGLE_SUCCESS_REDIRECT_URI`.
+### Github OAuth Routes
+
+- `GET /v1/auth/github`: Initiates Github OAuth login.
+- `GET /v1/auth/github/callback`: Handles Github OAuth callback.
+
+On successful authentication, access and refresh tokens are set in cookies and the user is redirected to `<PROVIDER>_SUCCESS_REDIRECT_URI` where `<PROVIDER>` is the provider used.
 
 ### Important Notes
 
-- Ensure your Google OAuth client is configured to allow the callback URI (`/v1/auth/google/callback`).
+- Ensure your OAuth client is configured to allow the callback URI (`/v1/auth/<provider>/callback`).
 - The handler you provide must persist or update users as needed.
 - Tokens are set in cookies for session management.
-- You can combine Google OAuth with email-password authentication seamlessly.
+- You can combine OAuth with email-password authentication seamlessly.
 
 ---
 
@@ -383,6 +408,11 @@ const authConfig: TConfig = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GOOGLE_SUCCESS_REDIRECT_URI: process.env.GOOGLE_SUCCESS_REDIRECT_URI,
   GOOGLE_FAILURE_REDIRECT_URI: process.env.GOOGLE_FAILURE_REDIRECT_URI,
+  // Add Github OAuth config if using Github login
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  GITHUB_SUCCESS_REDIRECT_URI: process.env.GITHUB_SUCCESS_REDIRECT_URI,
+  GITHUB_FAILURE_REDIRECT_URI: process.env.GITHUB_FAILURE_REDIRECT_URI,
 
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN, // for setting up cookie for this domain
   COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE, // by default it is 'lax'
@@ -443,6 +473,11 @@ initAuth({
   // Add Google OAuth if using Google login
   googleOAuth: {
     generator: googleGenerator,
+    oAuthHandler,
+  },
+  // Add Github OAuth if using Github login
+  githubOAuth: {
+    generator: githubGenerator,
     oAuthHandler,
   },
 });
@@ -677,3 +712,4 @@ function validateAuth(accessToken: string) {
 - [Baijanath Tharu](https://github.com/baijanathTharu)
 - [Santosh Kunwar](https://github.com/codemon77)
 - [Susan Shakya](https://github.com/susan-shakya1)
+- [Sujal Gaha Magar](https://github.com/Sujal-Gaha)

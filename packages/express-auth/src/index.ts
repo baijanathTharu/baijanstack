@@ -54,3 +54,4 @@ export type {
 } from './lib/response-codes';
 
 export { GoogleAuthGenerator } from './lib/oauth/google';
+export { GithubAuthGenerator } from './lib/oauth/github';

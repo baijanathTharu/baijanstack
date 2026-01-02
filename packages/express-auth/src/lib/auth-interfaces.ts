@@ -206,6 +206,7 @@ export interface IRouteMiddlewares {
 
 export enum AuthProvider {
   GOOGLE = 'google',
+  GITHUB = 'github',
 }
 
 export interface IOAuthHandler {
@@ -217,7 +218,7 @@ export interface IOAuthHandler {
    */
   createOrUpdateUser: (payload: {
     email: string;
-    googleId: string;
+    providerId: string;
     provider: AuthProvider;
     displayName?: string;
     profileImage?: string;
@@ -244,4 +245,16 @@ export type TGoogleProfile = {
   displayName: string;
   email: string;
   profileImage: string;
+};
+
+export type TGithubAuthConfig = {
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
+  GITHUB_FAILURE_REDIRECT_URI: string;
+  GITHUB_SUCCESS_REDIRECT_URI: string;
+};
+export type TGithubProfile = {
+  id: string;
+  email: string;
+  displayName: string;
 };
