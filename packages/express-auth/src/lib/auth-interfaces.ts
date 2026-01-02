@@ -52,6 +52,18 @@ export type TConfig = {
    * Domains for cookies
    */
   COOKIE_DOMAIN?: string;
+
+  /**
+   * COOKIE SAME-SITE POLICY
+   * By default `lax`
+   */
+  COOKIE_SAME_SITE?: 'lax' | 'strict' | 'none';
+
+  /**
+   * COOKIE SAME-SITE POLICY
+   * By default false
+   */
+  COOKIE_SECURE?: boolean;
 };
 
 export interface ISignUpHandler {
@@ -209,6 +221,7 @@ export interface IOAuthHandler {
     providerId: string;
     provider: AuthProvider;
     displayName?: string;
+    profileImage?: string;
   }) => Promise<boolean>;
 
   /**
@@ -231,6 +244,7 @@ export type TGoogleProfile = {
   id: string;
   displayName: string;
   email: string;
+  profileImage: string;
 };
 
 export type TGithubAuthConfig = {

@@ -323,7 +323,7 @@ export class OAuthHandler implements IOAuthHandler {
    * Called when a user authenticates via Google.
    * You should create or update the user in your database here.
    */
-  async createOrUpdateUser({ email, provider, googleId, displayName }) {
+  async createOrUpdateUser({ email, provider, googleId, displayName, profileImage }) {
     let user = this.users.find((u) => u.email === email);
     if (!user) {
       user = {
@@ -415,6 +415,8 @@ const authConfig: TConfig = {
   GITHUB_FAILURE_REDIRECT_URI: process.env.GITHUB_FAILURE_REDIRECT_URI,
 
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN, // for setting up cookie for this domain
+  COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE, // by default it is 'lax'
+  COOKIE_SECURE: process.env.COOKIE_SECURE, // by default it is false
 };
 ```
 

@@ -60,10 +60,13 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
               return done(new Error('No email found in Google profile'), null);
             }
 
+            const profileImage = googleProfile.photos[0]?.value || '';
+
             req.user = {
               email: email,
               displayName: googleProfile.displayName,
               id: googleProfile.id,
+              profileImage,
             } as TGoogleProfile;
 
             await oauthHandler.createOrUpdateUser({
@@ -71,6 +74,7 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
               provider: AuthProvider.GOOGLE,
               providerId: googleProfile.id,
               displayName: googleProfile.displayName,
+              profileImage,
             });
 
             return done(null, profile);
@@ -151,11 +155,17 @@ export class GoogleAuthGenerator implements IOAuthGenerator {
                 cookieName: 'x-access-token',
                 cookieValue: tokens.accessToken,
                 maxAge: this.config.ACCESS_TOKEN_AGE * 1000,
+                domain: this.config.COOKIE_DOMAIN,
+                sameSite: this.config.COOKIE_SAME_SITE,
+                secure: this.config.COOKIE_SECURE,
               },
               {
                 cookieName: 'x-refresh-token',
                 cookieValue: tokens.refreshToken,
                 maxAge: this.config.REFRESH_TOKEN_AGE * 1000,
+                domain: this.config.COOKIE_DOMAIN,
+                sameSite: this.config.COOKIE_SAME_SITE,
+                secure: this.config.COOKIE_SECURE,
               },
             ],
           });
