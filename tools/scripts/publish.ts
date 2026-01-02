@@ -58,7 +58,7 @@ try {
 }
 
 // Execute "npm publish" to publish
-exec(`npm publish --access public --tag ${tag}`, (e, stdout, stderr) => {
+exec(`npm publish --access public --tag ${tag} --otp`, (e, stdout, stderr) => {
   console.log(stdout);
   console.error(stderr);
   if (e) {
